@@ -6,47 +6,13 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 9%;
-
-    --radius: 0.75rem;
-
-    --font-sans: 'Inter', system-ui, sans-serif;
-  }
-
-  .dark {
-    --background: 0 0% 4%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 7%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 7%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 0 0% 98%;
@@ -56,17 +22,33 @@
     --secondary-foreground: 0 0% 98%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
+    --muted-foreground: 40 10% 60%;
 
-    --accent: 0 0% 15%;
+    --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
+    --success: 142 76% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
     --input: 0 0% 15%;
-    --ring: 0 0% 83%;
+    --ring: 0 0% 40%;
+
+    --radius: 0.75rem;
+
+    --font-sans: 'Inter', system-ui, sans-serif;
+
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 40%;
   }
 }
 
@@ -87,7 +69,7 @@
   }
   
   .auth-input {
-    @apply h-11 bg-background border-border focus:ring-2 focus:ring-ring focus:ring-offset-0 transition-all;
+    @apply h-11 bg-input border-border focus:ring-2 focus:ring-ring focus:ring-offset-0 transition-all;
   }
   
   .auth-button {
@@ -96,5 +78,17 @@
   
   .auth-link {
     @apply text-foreground font-medium hover:underline underline-offset-4 transition-all;
+  }
+
+  .stat-card {
+    @apply bg-card border border-border rounded-xl p-6 flex flex-col gap-2;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors;
+  }
+
+  .sidebar-link-active {
+    @apply bg-accent text-foreground;
   }
 }
