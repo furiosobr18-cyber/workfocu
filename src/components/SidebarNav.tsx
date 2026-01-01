@@ -1,13 +1,14 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, Sun, LogOut } from "lucide-react";
+import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
 const navItems = [
   { icon: LayoutGrid, label: "Painel", path: "/dashboard" },
-  { icon: CheckSquare, label: "0s", path: "/tasks" },
+  { icon: CheckSquare, label: "Tarefas", path: "/tasks" },
   { icon: Timer, label: "Pomodoro", path: "/pomodoro" },
   { icon: FileText, label: "Notas", path: "/notes" },
   { icon: Calendar, label: "Calendário", path: "/calendar" },
@@ -17,6 +18,7 @@ const SidebarNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     const { error } = await signOut();
@@ -77,9 +79,18 @@ const SidebarNav = () => {
         <div className="px-3 py-2 text-sm text-muted-foreground truncate">
           {displayEmail}
         </div>
-        <button className="sidebar-link w-full">
-          <Sun className="w-5 h-5" />
-          <span>Modo claro</span>
+        <button onClick={toggleTheme} className="sidebar-link w-full">
+          {theme === 'dark' ? (
+            <>
+              <Sun className="w-5 h-5" />
+              <span>Modo claro</span>
+            </>
+          ) : (
+            <>
+              <Moon className="w-5 h-5" />
+              <span>Modo escuro</span>
+            </>
+          )}
         </button>
         <button onClick={handleLogout} className="sidebar-link w-full">
           <LogOut className="w-5 h-5" />
