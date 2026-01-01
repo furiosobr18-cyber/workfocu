@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, FileText, X, Link2, Unlink, Network } from "lucide-react";
+import { Plus, Trash2, FileText, X, Link2, Unlink, Network, Eye, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import NoteGraph from "@/components/NoteGraph";
+import ReactMarkdown from "react-markdown";
 
 interface Note {
   id: string;
@@ -48,6 +49,7 @@ const Notes = () => {
   const [showGraph, setShowGraph] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -427,12 +429,58 @@ const Notes = () => {
                 </div>
               )}
 
-              <Textarea
-                placeholder="Escreva sua nota... Use [[Nome da Nota]] para referenciar outras notas."
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 resize-none min-h-[300px] font-mono"
-              />
+              {/* Toggle Preview/Edit */}
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  variant={!isPreviewMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsPreviewMode(false)}
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  variant={isPreviewMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsPreviewMode(true)}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
+
+              {isPreviewMode ? (
+                <div className="flex-1 overflow-auto min-h-[300px] p-4 bg-muted/30 rounded-lg border border-border prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4">{children}</h3>,
+                      p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="text-foreground">{children}</li>,
+                      strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+                      em: ({ children }) => <em className="italic text-foreground">{children}</em>,
+                      code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary">{children}</code>,
+                      pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+                      blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3">{children}</blockquote>,
+                      a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80">{children}</a>,
+                      hr: () => <hr className="border-border my-4" />,
+                    }}
+                  >
+                    {editContent || "*Nenhum conteúdo*"}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <Textarea
+                  placeholder="Escreva sua nota em Markdown...&#10;&#10;# Título&#10;## Subtítulo&#10;- Lista&#10;**negrito** _itálico_&#10;`código`"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="flex-1 resize-none min-h-[300px] font-mono"
+                />
+              )}
+              
               <div className="mt-4 flex justify-end">
                 <Button onClick={updateNote}>Salvar</Button>
               </div>

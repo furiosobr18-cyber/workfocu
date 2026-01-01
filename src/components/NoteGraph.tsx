@@ -152,9 +152,10 @@ const NoteGraph = ({ notes, links, onSelectNote, selectedNoteId }: NoteGraphProp
       // Render
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
       
-      // Draw links
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.4)';
+      // Draw links as dotted lines
+      ctx.strokeStyle = 'rgba(150, 150, 150, 0.6)';
       ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]); // Dotted line pattern
       for (const link of links) {
         const source = nodes.find(n => n.id === link.source_note_id);
         const target = nodes.find(n => n.id === link.target_note_id);
@@ -165,6 +166,7 @@ const NoteGraph = ({ notes, links, onSelectNote, selectedNoteId }: NoteGraphProp
           ctx.stroke();
         }
       }
+      ctx.setLineDash([]); // Reset to solid line for nodes
       
       // Draw nodes
       for (const node of nodes) {
