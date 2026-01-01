@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, FileText, X, Link2, Unlink, Network, Eye, Edit3 } from "lucide-react";
+import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,12 +30,12 @@ interface NoteLink {
 }
 
 const NOTE_COLORS = [
-  { name: 'default', class: 'bg-card', dot: 'bg-muted-foreground' },
-  { name: 'blue', class: 'bg-blue-500/20', dot: 'bg-blue-500' },
-  { name: 'green', class: 'bg-green-500/20', dot: 'bg-green-500' },
-  { name: 'purple', class: 'bg-purple-500/20', dot: 'bg-purple-500' },
-  { name: 'orange', class: 'bg-orange-500/20', dot: 'bg-orange-500' },
-  { name: 'pink', class: 'bg-pink-500/20', dot: 'bg-pink-500' },
+  { name: 'default', class: 'bg-card border-border', dot: 'bg-muted-foreground' },
+  { name: 'blue', class: 'bg-blue-500/10 border-blue-500/30', dot: 'bg-blue-500' },
+  { name: 'green', class: 'bg-green-500/10 border-green-500/30', dot: 'bg-green-500' },
+  { name: 'purple', class: 'bg-purple-500/10 border-purple-500/30', dot: 'bg-purple-500' },
+  { name: 'orange', class: 'bg-orange-500/10 border-orange-500/30', dot: 'bg-orange-500' },
+  { name: 'pink', class: 'bg-pink-500/10 border-pink-500/30', dot: 'bg-pink-500' },
 ];
 
 const Notes = () => {
@@ -46,10 +48,10 @@ const Notes = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [editContent, setEditContent] = useState("");
-  const [showGraph, setShowGraph] = useState(false);
+  const [activeView, setActiveView] = useState<"notes" | "graph">("notes");
   const [isLinking, setIsLinking] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [editMode, setEditMode] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -110,7 +112,8 @@ const Notes = () => {
       setSelectedNote(data);
       setEditContent("");
       setNewTitle("");
-      toast({ title: "Nota criada!", description: "Sua nova nota foi adicionada." });
+      setEditMode("edit");
+      toast({ title: "Nota criada!" });
     }
     
     setIsCreating(false);
@@ -125,7 +128,7 @@ const Notes = () => {
       .eq('id', selectedNote.id);
     
     if (error) {
-      toast({ title: "Erro", description: "Não foi possível salvar a nota.", variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível salvar.", variant: "destructive" });
       return;
     }
     
@@ -133,7 +136,7 @@ const Notes = () => {
       n.id === selectedNote.id ? { ...n, content: editContent, updated_at: new Date().toISOString() } : n
     ));
     
-    toast({ title: "Nota salva!" });
+    toast({ title: "Salvo!" });
   };
 
   const updateNoteColor = async (noteId: string, color: string) => {
@@ -154,7 +157,7 @@ const Notes = () => {
     const { error } = await supabase.from('notes').delete().eq('id', noteId);
     
     if (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir a nota.", variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível excluir.", variant: "destructive" });
       return;
     }
     
@@ -169,7 +172,6 @@ const Notes = () => {
   const linkNotes = async (targetNoteId: string) => {
     if (!selectedNote || !user || selectedNote.id === targetNoteId) return;
     
-    // Check if link already exists
     const existingLink = noteLinks.find(
       l => (l.source_note_id === selectedNote.id && l.target_note_id === targetNoteId) ||
            (l.source_note_id === targetNoteId && l.target_note_id === selectedNote.id)
@@ -191,7 +193,7 @@ const Notes = () => {
       .single();
     
     if (error) {
-      toast({ title: "Erro", description: "Não foi possível conectar as notas.", variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível conectar.", variant: "destructive" });
     } else if (data) {
       setNoteLinks([...noteLinks, data]);
       toast({ title: "Notas conectadas!" });
@@ -213,6 +215,7 @@ const Notes = () => {
     setSelectedNote(note);
     setEditContent(note.content || "");
     setIsLinking(false);
+    setEditMode("edit");
   };
 
   const getConnectedNotes = (noteId: string) => {
@@ -252,246 +255,283 @@ const Notes = () => {
     <div className="flex min-h-screen bg-background">
       <SidebarNav />
       
-      <main className="flex-1 flex">
-        {/* Notes List */}
-        <div className="w-80 border-r border-border p-4 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold text-foreground">Segundo Cérebro</h1>
-            <Button
-              variant={showGraph ? "default" : "outline"}
-              size="icon"
-              onClick={() => setShowGraph(!showGraph)}
-              title="Ver grafo de conexões"
-            >
-              <Network className="w-4 h-4" />
-            </Button>
+      <main className="flex-1 p-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto h-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Segundo Cérebro</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {notes.length} notas · {noteLinks.length} conexões
+              </p>
+            </div>
+            
+            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as "notes" | "graph")}>
+              <TabsList>
+                <TabsTrigger value="notes">Notas</TabsTrigger>
+                <TabsTrigger value="graph">
+                  <Network className="w-4 h-4 mr-2" />
+                  Grafo
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-          
-          <Input
-            placeholder="Buscar notas..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-4"
-          />
-          
-          <div className="flex gap-2 mb-4">
-            <Input
-              placeholder="Nova nota..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="flex-1"
-              onKeyDown={(e) => e.key === 'Enter' && createNote()}
-            />
-            <Button onClick={createNote} disabled={isCreating || !newTitle.trim()} size="icon">
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto space-y-2">
-            {filteredNotes.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Nenhuma nota encontrada</p>
-            ) : (
-              filteredNotes.map((note) => {
-                const connections = noteLinks.filter(
-                  l => l.source_note_id === note.id || l.target_note_id === note.id
-                ).length;
-                
-                return (
-                  <div
-                    key={note.id}
-                    onClick={() => isLinking ? linkNotes(note.id) : selectNote(note)}
-                    className={`p-3 rounded-lg cursor-pointer transition-all group ${getColorClass(note.color)} ${
-                      selectedNote?.id === note.id
-                        ? "ring-2 ring-primary"
-                        : "hover:ring-1 hover:ring-border"
-                    } ${isLinking && selectedNote?.id !== note.id ? "hover:ring-2 hover:ring-green-500" : ""}`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className={`w-3 h-3 rounded-full mt-1 ${getDotClass(note.color)}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{note.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(note.updated_at).toLocaleDateString("pt-BR")}
-                          </p>
-                          {connections > 0 && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                              <Link2 className="w-3 h-3 mr-1" />
-                              {connections}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNote(note.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive h-6 w-6 p-0"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {showGraph ? (
-            <div className="flex-1 p-6">
-              <h2 className="text-xl font-bold text-foreground mb-4">Mapa de Conexões</h2>
+          {activeView === "graph" ? (
+            <Card className="flex-1 p-4">
               <NoteGraph 
                 notes={notes} 
                 links={noteLinks} 
-                onSelectNote={selectNote}
+                onSelectNote={(note) => {
+                  selectNote(note);
+                  setActiveView("notes");
+                }}
                 selectedNoteId={selectedNote?.id}
               />
-            </div>
-          ) : selectedNote ? (
-            <div className="flex-1 flex flex-col p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full ${getDotClass(selectedNote.color)}`} />
-                  <h2 className="text-2xl font-bold text-foreground">{selectedNote.title}</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Color Picker */}
-                  <div className="flex gap-1">
-                    {NOTE_COLORS.map((color) => (
-                      <button
-                        key={color.name}
-                        onClick={() => updateNoteColor(selectedNote.id, color.name)}
-                        className={`w-5 h-5 rounded-full ${color.dot} ${
-                          selectedNote.color === color.name ? 'ring-2 ring-offset-2 ring-primary' : ''
-                        }`}
-                      />
-                    ))}
+            </Card>
+          ) : (
+            <div className="flex-1 flex gap-6 min-h-0">
+              {/* Notes List */}
+              <Card className="w-80 flex flex-col shrink-0">
+                <div className="p-4 border-b border-border space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar notas..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
-                  <Button
-                    variant={isLinking ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsLinking(!isLinking)}
-                  >
-                    <Link2 className="w-4 h-4 mr-2" />
-                    {isLinking ? "Clique em uma nota" : "Conectar"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedNote(null);
-                      setEditContent("");
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nova nota..."
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && createNote()}
+                    />
+                    <Button onClick={createNote} disabled={isCreating || !newTitle.trim()} size="icon">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              {/* Connected Notes */}
-              {connectedNotes.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-muted-foreground mb-2">Conectada a:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {connectedNotes.map((note) => {
-                      const link = noteLinks.find(
-                        l => (l.source_note_id === selectedNote.id && l.target_note_id === note.id) ||
-                             (l.source_note_id === note.id && l.target_note_id === selectedNote.id)
-                      );
+                
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {filteredNotes.length === 0 ? (
+                    <p className="text-muted-foreground text-sm p-4 text-center">
+                      {notes.length === 0 ? "Crie sua primeira nota" : "Nenhuma nota encontrada"}
+                    </p>
+                  ) : (
+                    filteredNotes.map((note) => {
+                      const connections = noteLinks.filter(
+                        l => l.source_note_id === note.id || l.target_note_id === note.id
+                      ).length;
+                      
                       return (
-                        <Badge
+                        <div
                           key={note.id}
-                          variant="secondary"
-                          className="cursor-pointer hover:bg-accent group"
+                          onClick={() => isLinking ? linkNotes(note.id) : selectNote(note)}
+                          className={`p-3 rounded-lg cursor-pointer transition-all group border ${getColorClass(note.color)} ${
+                            selectedNote?.id === note.id
+                              ? "ring-2 ring-primary"
+                              : "hover:bg-accent/50"
+                          } ${isLinking && selectedNote?.id !== note.id ? "hover:ring-2 hover:ring-green-500" : ""}`}
                         >
-                          <span onClick={() => selectNote(note)}>{note.title}</span>
-                          {link && (
-                            <button
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${getDotClass(note.color)}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground text-sm truncate">{note.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(note.updated_at).toLocaleDateString("pt-BR")}
+                                </span>
+                                {connections > 0 && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Link2 className="w-3 h-3" />
+                                    {connections}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                unlinkNotes(link.id);
+                                deleteNote(note.id);
                               }}
-                              className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="opacity-0 group-hover:opacity-100 h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                             >
-                              <Unlink className="w-3 h-3" />
-                            </button>
-                          )}
-                        </Badge>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
                       );
-                    })}
+                    })
+                  )}
+                </div>
+              </Card>
+
+              {/* Editor */}
+              <Card className="flex-1 flex flex-col min-w-0">
+                {selectedNote ? (
+                  <>
+                    {/* Note Header */}
+                    <div className="p-4 border-b border-border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-3 h-3 rounded-full shrink-0 ${getDotClass(selectedNote.color)}`} />
+                          <h2 className="text-lg font-semibold text-foreground truncate">{selectedNote.title}</h2>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                            {NOTE_COLORS.map((color) => (
+                              <button
+                                key={color.name}
+                                onClick={() => updateNoteColor(selectedNote.id, color.name)}
+                                className={`w-5 h-5 rounded-full transition-transform ${color.dot} ${
+                                  selectedNote.color === color.name ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-110'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          
+                          <Button
+                            variant={isLinking ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsLinking(!isLinking)}
+                          >
+                            <Link2 className="w-4 h-4" />
+                            <span className="ml-2 hidden sm:inline">
+                              {isLinking ? "Selecione" : "Conectar"}
+                            </span>
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedNote(null);
+                              setEditContent("");
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Connected Notes */}
+                      {connectedNotes.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                          <span className="text-xs text-muted-foreground">Conexões:</span>
+                          {connectedNotes.map((note) => {
+                            const link = noteLinks.find(
+                              l => (l.source_note_id === selectedNote.id && l.target_note_id === note.id) ||
+                                   (l.source_note_id === note.id && l.target_note_id === selectedNote.id)
+                            );
+                            return (
+                              <Badge
+                                key={note.id}
+                                variant="secondary"
+                                className="cursor-pointer hover:bg-accent group text-xs"
+                              >
+                                <span onClick={() => selectNote(note)}>{note.title}</span>
+                                {link && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      unlinkNotes(link.id);
+                                    }}
+                                    className="ml-1.5 opacity-0 group-hover:opacity-100"
+                                  >
+                                    <Unlink className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Editor/Preview Toggle */}
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+                      <div className="flex gap-1">
+                        <Button
+                          variant={editMode === "edit" ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => setEditMode("edit")}
+                          className="h-8"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 mr-1.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant={editMode === "preview" ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => setEditMode("preview")}
+                          className="h-8"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1.5" />
+                          Preview
+                        </Button>
+                      </div>
+                      
+                      <Button size="sm" onClick={updateNote} className="h-8">
+                        Salvar
+                      </Button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-hidden">
+                      {editMode === "preview" ? (
+                        <div className="h-full overflow-auto p-6">
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown
+                              components={{
+                                h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4">{children}</h3>,
+                                p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed">{children}</p>,
+                                ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1">{children}</ol>,
+                                li: ({ children }) => <li className="text-foreground">{children}</li>,
+                                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                                em: ({ children }) => <em className="italic">{children}</em>,
+                                code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary">{children}</code>,
+                                pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+                                blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3">{children}</blockquote>,
+                                a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80">{children}</a>,
+                                hr: () => <hr className="border-border my-4" />,
+                              }}
+                            >
+                              {editContent || "*Comece a escrever...*"}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      ) : (
+                        <Textarea
+                          placeholder="Escreva em Markdown...&#10;&#10;# Título&#10;## Subtítulo&#10;- Lista&#10;**negrito** _itálico_"
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="h-full resize-none border-0 rounded-none focus-visible:ring-0 font-mono text-sm p-6"
+                        />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <Network className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium">Selecione uma nota</p>
+                      <p className="text-sm mt-1">ou crie uma nova para começar</p>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Toggle Preview/Edit */}
-              <div className="flex items-center gap-2 mb-2">
-                <Button
-                  variant={!isPreviewMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsPreviewMode(false)}
-                >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  variant={isPreviewMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsPreviewMode(true)}
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </Button>
-              </div>
-
-              {isPreviewMode ? (
-                <div className="flex-1 overflow-auto min-h-[300px] p-4 bg-muted/30 rounded-lg border border-border prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown
-                    components={{
-                      h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4">{children}</h3>,
-                      p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1">{children}</ol>,
-                      li: ({ children }) => <li className="text-foreground">{children}</li>,
-                      strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-                      em: ({ children }) => <em className="italic text-foreground">{children}</em>,
-                      code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary">{children}</code>,
-                      pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3">{children}</pre>,
-                      blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3">{children}</blockquote>,
-                      a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80">{children}</a>,
-                      hr: () => <hr className="border-border my-4" />,
-                    }}
-                  >
-                    {editContent || "*Nenhum conteúdo*"}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <Textarea
-                  placeholder="Escreva sua nota em Markdown...&#10;&#10;# Título&#10;## Subtítulo&#10;- Lista&#10;**negrito** _itálico_&#10;`código`"
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="flex-1 resize-none min-h-[300px] font-mono"
-                />
-              )}
-              
-              <div className="mt-4 flex justify-end">
-                <Button onClick={updateNote}>Salvar</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Network className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Segundo Cérebro</p>
-                <p className="text-sm mt-2">Crie notas e conecte ideias</p>
-              </div>
+                )}
+              </Card>
             </div>
           )}
         </div>

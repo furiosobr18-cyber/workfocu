@@ -3,7 +3,10 @@ import { useRef, useEffect, useState } from "react";
 interface Note {
   id: string;
   title: string;
+  content: string | null;
   color: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface NoteLink {
@@ -277,7 +280,7 @@ const NoteGraph = ({ notes, links, onSelectNote, selectedNoteId }: NoteGraphProp
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-[500px] bg-card rounded-xl border border-border overflow-hidden"
+      className="w-full h-full min-h-[400px] bg-muted/30 rounded-lg overflow-hidden"
     >
       <canvas
         ref={canvasRef}
