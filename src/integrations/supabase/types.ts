@@ -44,8 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      note_links: {
+        Row: {
+          created_at: string
+          id: string
+          source_note_id: string
+          target_note_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_note_id: string
+          target_note_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_note_id?: string
+          target_note_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_links_source_note_id_fkey"
+            columns: ["source_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_links_target_note_id_fkey"
+            columns: ["target_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
+          color: string | null
           content: string | null
           created_at: string
           id: string
@@ -54,6 +94,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          color?: string | null
           content?: string | null
           created_at?: string
           id?: string
@@ -62,6 +103,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          color?: string | null
           content?: string | null
           created_at?: string
           id?: string
