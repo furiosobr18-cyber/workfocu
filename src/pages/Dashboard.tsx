@@ -18,6 +18,7 @@ const Dashboard = () => {
   });
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,81 +28,82 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchStats();
-      fetchTodayEvents();
-      fetchRecentTasks();
+      fetchAllData();
     }
   }, [user]);
 
-  const fetchStats = async () => {
+  const fetchAllData = async () => {
     if (!user) return;
     
+    setIsLoading(true);
     const today = new Date().toISOString().split('T')[0];
     
-    // Pending tasks
-    const { count: pendingCount } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('completed', false);
-    
-    // Completed today
-    const { count: completedCount } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('completed', true)
-      .gte('updated_at', `${today}T00:00:00`);
-    
-    // Pomodoro sessions today
-    const { count: pomodoroCount } = await supabase
-      .from('pomodoro_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('completed_at', `${today}T00:00:00`);
-    
-    // Notes count
-    const { count: notesCount } = await supabase
-      .from('notes')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
-    
+    // Execute all queries in parallel for better performance
+    const [
+      pendingResult,
+      completedResult,
+      pomodoroResult,
+      notesResult,
+      eventsResult,
+      tasksResult
+    ] = await Promise.all([
+      // Pending tasks count
+      supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('completed', false),
+      
+      // Completed today count
+      supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .gte('updated_at', `${today}T00:00:00`),
+      
+      // Pomodoro sessions today count
+      supabase
+        .from('pomodoro_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('completed_at', `${today}T00:00:00`),
+      
+      // Notes count
+      supabase
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      
+      // Today's events
+      supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('event_date', today)
+        .order('event_time', { ascending: true })
+        .limit(5),
+      
+      // Recent tasks
+      supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed', false)
+        .order('created_at', { ascending: false })
+        .limit(5)
+    ]);
+
     setStats({
-      pendingTasks: pendingCount || 0,
-      completedToday: completedCount || 0,
-      pomodoroSessions: pomodoroCount || 0,
-      notesCount: notesCount || 0
+      pendingTasks: pendingResult.count || 0,
+      completedToday: completedResult.count || 0,
+      pomodoroSessions: pomodoroResult.count || 0,
+      notesCount: notesResult.count || 0
     });
-  };
-
-  const fetchTodayEvents = async () => {
-    if (!user) return;
     
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { data } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('event_date', today)
-      .order('event_time', { ascending: true })
-      .limit(5);
-    
-    setTodayEvents(data || []);
-  };
-
-  const fetchRecentTasks = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('completed', false)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    setRecentTasks(data || []);
+    setTodayEvents(eventsResult.data || []);
+    setRecentTasks(tasksResult.data || []);
+    setIsLoading(false);
   };
 
   // Format current date in Portuguese
@@ -111,10 +113,24 @@ const Dashboard = () => {
     month: "long",
   });
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Carregando...</p>
+      <div className="flex min-h-screen bg-background">
+        <SidebarNav />
+        <main className="flex-1 p-8">
+          <div className="mb-8">
+            <div className="h-9 w-32 bg-muted rounded animate-pulse mb-2" />
+            <div className="h-5 w-48 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="stat-card">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-8 w-12 bg-muted rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
