@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Play, Pause, RotateCcw, Coffee, Brain } from "lucide-react";
+import { Play, Pause, RotateCcw, Coffee, Brain, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,35 @@ const TIMER_CONFIGS = {
   long_break: { minutes: 15, label: "Pausa Longa", icon: Coffee },
 };
 
+// Create audio context for notification sound
+const playNotificationSound = () => {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  
+  // Create a pleasant chime sound
+  const playTone = (frequency: number, startTime: number, duration: number) => {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, startTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
+  };
+  
+  const now = audioContext.currentTime;
+  // Play a pleasant three-tone chime
+  playTone(523.25, now, 0.3);       // C5
+  playTone(659.25, now + 0.15, 0.3); // E5
+  playTone(783.99, now + 0.3, 0.5);  // G5
+};
+
 const Pomodoro = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -24,6 +53,8 @@ const Pomodoro = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const [todaySessions, setTodaySessions] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const hasCompletedRef = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -47,6 +78,48 @@ const Pomodoro = () => {
     }
   }, [user, sessionsCompleted]);
 
+  const handleSessionComplete = useCallback(async () => {
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
+    
+    setIsRunning(false);
+    
+    // Play notification sound
+    if (soundEnabled) {
+      playNotificationSound();
+    }
+    
+    if (user && sessionType === "work") {
+      // Save completed work session
+      await supabase.from('pomodoro_sessions').insert({
+        user_id: user.id,
+        duration_minutes: TIMER_CONFIGS.work.minutes,
+        session_type: sessionType
+      });
+      
+      setSessionsCompleted((prev) => prev + 1);
+      
+      toast({
+        title: "🎉 Sessão concluída!",
+        description: "Hora de fazer uma pausa.",
+      });
+      
+      // Auto-switch to break
+      const newSessions = sessionsCompleted + 1;
+      if (newSessions % 4 === 0) {
+        switchSession("long_break");
+      } else {
+        switchSession("short_break");
+      }
+    } else {
+      toast({
+        title: "☕ Pausa finalizada!",
+        description: "Pronto para mais uma sessão de foco?",
+      });
+      switchSession("work");
+    }
+  }, [user, sessionType, sessionsCompleted, soundEnabled]);
+
   // Timer countdown
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -60,46 +133,13 @@ const Pomodoro = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
-
-  const handleSessionComplete = useCallback(async () => {
-    setIsRunning(false);
-    
-    if (user && sessionType === "work") {
-      // Save completed work session
-      await supabase.from('pomodoro_sessions').insert({
-        user_id: user.id,
-        duration_minutes: TIMER_CONFIGS.work.minutes,
-        session_type: sessionType
-      });
-      
-      setSessionsCompleted((prev) => prev + 1);
-      
-      toast({
-        title: "Sessão concluída!",
-        description: "Hora de fazer uma pausa.",
-      });
-      
-      // Auto-switch to break
-      const newSessions = sessionsCompleted + 1;
-      if (newSessions % 4 === 0) {
-        switchSession("long_break");
-      } else {
-        switchSession("short_break");
-      }
-    } else {
-      toast({
-        title: "Pausa finalizada!",
-        description: "Pronto para mais uma sessão de foco?",
-      });
-      switchSession("work");
-    }
-  }, [user, sessionType, sessionsCompleted]);
+  }, [isRunning, timeLeft, handleSessionComplete]);
 
   const switchSession = (type: SessionType) => {
     setSessionType(type);
     setTimeLeft(TIMER_CONFIGS[type].minutes * 60);
     setIsRunning(false);
+    hasCompletedRef.current = false;
   };
 
   const toggleTimer = () => {
@@ -109,6 +149,7 @@ const Pomodoro = () => {
   const resetTimer = () => {
     setTimeLeft(TIMER_CONFIGS[sessionType].minutes * 60);
     setIsRunning(false);
+    hasCompletedRef.current = false;
   };
 
   const formatTime = (seconds: number) => {
@@ -136,9 +177,19 @@ const Pomodoro = () => {
       <SidebarNav />
       
       <main className="flex-1 p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Pomodoro</h1>
-          <p className="text-muted-foreground">Sessões hoje: {todaySessions}</p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Pomodoro</h1>
+            <p className="text-muted-foreground">Sessões hoje: {todaySessions}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            title={soundEnabled ? "Desativar som" : "Ativar som"}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </Button>
         </div>
 
         {/* Session Type Tabs */}
