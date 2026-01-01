@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,27 +6,70 @@ import { Label } from "@/components/ui/label";
 import Logo from "@/components/Logo";
 import AuthCard from "@/components/AuthCard";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { signIn, user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulated login - replace with actual auth logic
-    setTimeout(() => {
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      let message = "Erro ao fazer login. Tente novamente.";
+      
+      if (error.message.includes("Invalid login credentials")) {
+        message = "Email ou senha incorretos.";
+      } else if (error.message.includes("Email not confirmed")) {
+        message = "Confirme seu email antes de fazer login.";
+      }
+      
       toast({
-        title: "Login bem-sucedido!",
-        description: "Redirecionando para o dashboard...",
+        title: "Erro no login",
+        description: message,
+        variant: "destructive"
       });
       setIsLoading(false);
-      navigate("/dashboard");
-    }, 1000);
+      return;
+    }
+    
+    toast({
+      title: "Login bem-sucedido!",
+      description: "Redirecionando para o dashboard...",
+    });
+    setIsLoading(false);
+    navigate("/dashboard");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
