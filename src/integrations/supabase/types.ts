@@ -137,6 +137,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_logs: {
+        Row: {
+          created_at: string
+          email_hash: string | null
+          event_type: string
+          id: string
+          ip_hint: string | null
+          metadata: Json | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_hash?: string | null
+          event_type: string
+          id?: string
+          ip_hint?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_hash?: string | null
+          event_type?: string
+          id?: string
+          ip_hint?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           completed: boolean
@@ -175,7 +205,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_security_logs: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

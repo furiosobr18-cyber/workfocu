@@ -8,12 +8,15 @@ import AuthCard from "@/components/AuthCard";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
+import { loginSchema } from "@/lib/validation";
+import { logSecurityEvent } from "@/lib/security";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { signIn, signInWithGoogle, user, loading } = useAuth();
 
@@ -25,21 +28,48 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
-    if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos.",
-        variant: "destructive"
+    // Validate input
+    const validation = loginSchema.safeParse({ email, password });
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
       });
+      setErrors(fieldErrors);
       return;
     }
 
     setIsLoading(true);
+
+    // Check rate limit
+    const { rate_limited } = await logSecurityEvent({
+      event_type: 'login_attempt',
+      email: validation.data.email,
+    });
+
+    if (rate_limited) {
+      toast({
+        title: "Muitas tentativas",
+        description: "Aguarde um minuto antes de tentar novamente.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
     
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(validation.data.email, validation.data.password);
     
     if (error) {
+      await logSecurityEvent({
+        event_type: 'login_failure',
+        email: validation.data.email,
+        metadata: { error_code: error.message }
+      });
+
       let message = "Erro ao fazer login. Tente novamente.";
       
       if (error.message.includes("Invalid login credentials")) {
@@ -56,6 +86,11 @@ const Login = () => {
       setIsLoading(false);
       return;
     }
+
+    await logSecurityEvent({
+      event_type: 'login_success',
+      email: validation.data.email,
+    });
     
     toast({
       title: "Login bem-sucedido!",
@@ -67,6 +102,12 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
+    
+    await logSecurityEvent({
+      event_type: 'login_attempt',
+      metadata: { provider: 'google' }
+    });
+
     const { error } = await signInWithGoogle();
     
     if (error) {
@@ -153,9 +194,12 @@ const Login = () => {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="auth-input"
-                required
+                className={errors.email ? "border-destructive" : ""}
+                autoComplete="email"
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -171,14 +215,17 @@ const Login = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="auth-input"
-                required
+                className={errors.password ? "border-destructive" : ""}
+                autoComplete="current-password"
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
 
             <Button 
               type="submit" 
-              className="auth-button w-full"
+              className="w-full"
               disabled={isLoading}
             >
               {isLoading ? "Entrando..." : "Entrar"}
