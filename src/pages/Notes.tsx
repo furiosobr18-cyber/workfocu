@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search } from "lucide-react";
+import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import NoteGraph from "@/components/NoteGraph";
+import BrainCard from "@/components/BrainCard";
+import BrainDetail from "@/components/BrainDetail";
+import CreateBrainDialog from "@/components/CreateBrainDialog";
+import { useBrains, Brain } from "@/hooks/useBrains";
 import ReactMarkdown from "react-markdown";
 
 interface Note {
@@ -48,10 +52,27 @@ const Notes = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [editContent, setEditContent] = useState("");
-  const [activeView, setActiveView] = useState<"notes" | "graph">("notes");
+  const [activeView, setActiveView] = useState<"notes" | "brains" | "graph">("notes");
   const [isLinking, setIsLinking] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState<"edit" | "preview">("edit");
+  
+  // Brain state
+  const {
+    brains,
+    createBrain,
+    updateBrain,
+    deleteBrain,
+    addNoteToBrain,
+    removeNoteFromBrain,
+    getNotesInBrain,
+    getLooseNoteIds,
+    getBrainColor,
+  } = useBrains(user?.id);
+  
+  const [selectedBrain, setSelectedBrain] = useState<Brain | null>(null);
+  const [showCreateBrainDialog, setShowCreateBrainDialog] = useState(false);
+  const [pendingBrainNotes, setPendingBrainNotes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -197,9 +218,38 @@ const Notes = () => {
     } else if (data) {
       setNoteLinks([...noteLinks, data]);
       toast({ title: "Notas conectadas!" });
+      
+      // Check if we should prompt for brain creation
+      const connectedNotesCount = getConnectedNotesRecursive(selectedNote.id, [...noteLinks, data]).length;
+      if (connectedNotesCount >= 2) {
+        const looseNoteIds = getLooseNoteIds(notes.map(n => n.id));
+        const connectedLooseNotes = getConnectedNotesRecursive(selectedNote.id, [...noteLinks, data])
+          .filter(id => looseNoteIds.includes(id) || id === selectedNote.id);
+        
+        if (connectedLooseNotes.length >= 2 && looseNoteIds.includes(selectedNote.id)) {
+          setPendingBrainNotes(connectedLooseNotes);
+          setShowCreateBrainDialog(true);
+        }
+      }
     }
     
     setIsLinking(false);
+  };
+
+  const getConnectedNotesRecursive = (noteId: string, links: NoteLink[], visited: Set<string> = new Set()): string[] => {
+    if (visited.has(noteId)) return [];
+    visited.add(noteId);
+    
+    const directConnections = links
+      .filter(l => l.source_note_id === noteId || l.target_note_id === noteId)
+      .map(l => l.source_note_id === noteId ? l.target_note_id : l.source_note_id);
+    
+    let allConnections = [noteId];
+    for (const connId of directConnections) {
+      allConnections = [...allConnections, ...getConnectedNotesRecursive(connId, links, visited)];
+    }
+    
+    return allConnections;
   };
 
   const unlinkNotes = async (linkId: string) => {
@@ -216,6 +266,8 @@ const Notes = () => {
     setEditContent(note.content || "");
     setIsLinking(false);
     setEditMode("edit");
+    setActiveView("notes");
+    setSelectedBrain(null);
   };
 
   const getConnectedNotes = (noteId: string) => {
@@ -234,10 +286,26 @@ const Notes = () => {
     return NOTE_COLORS.find(c => c.name === color)?.dot || NOTE_COLORS[0].dot;
   };
 
-  const filteredNotes = notes.filter(n => 
+  // Get loose notes (notes not in any brain)
+  const looseNoteIds = getLooseNoteIds(notes.map(n => n.id));
+  const looseNotes = notes.filter(n => looseNoteIds.includes(n.id));
+  
+  const filteredNotes = looseNotes.filter(n => 
     n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (n.content && n.content.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handleCreateBrain = async (name: string, color: string) => {
+    await createBrain(name, pendingBrainNotes, color);
+    setPendingBrainNotes([]);
+  };
+
+  const handleDeleteBrain = async (brainId: string) => {
+    await deleteBrain(brainId);
+    if (selectedBrain?.id === brainId) {
+      setSelectedBrain(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -251,6 +319,34 @@ const Notes = () => {
 
   const connectedNotes = selectedNote ? getConnectedNotes(selectedNote.id) : [];
 
+  // Brain detail view
+  if (selectedBrain) {
+    const brainNoteIds = getNotesInBrain(selectedBrain.id);
+    const brainNotes = notes.filter(n => brainNoteIds.includes(n.id));
+    
+    return (
+      <div className="flex min-h-screen bg-background">
+        <SidebarNav />
+        <main className="flex-1 p-6 overflow-hidden">
+          <div className="max-w-7xl mx-auto h-full">
+            <BrainDetail
+              brain={selectedBrain}
+              brainNotes={brainNotes}
+              allNotes={notes}
+              noteLinks={noteLinks}
+              looseNotes={looseNotes}
+              onBack={() => setSelectedBrain(null)}
+              onUpdateBrain={(updates) => updateBrain(selectedBrain.id, updates)}
+              onAddNote={(noteId) => addNoteToBrain(selectedBrain.id, noteId)}
+              onRemoveNote={(noteId) => removeNoteFromBrain(selectedBrain.id, noteId)}
+              onSelectNote={selectNote}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav />
@@ -262,13 +358,17 @@ const Notes = () => {
             <div>
               <h1 className="text-2xl font-bold text-foreground">Segundo Cérebro</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {notes.length} notas · {noteLinks.length} conexões
+                {notes.length} notas · {brains.length} cérebros · {noteLinks.length} conexões
               </p>
             </div>
             
-            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as "notes" | "graph")}>
+            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as "notes" | "brains" | "graph")}>
               <TabsList>
                 <TabsTrigger value="notes">Notas</TabsTrigger>
+                <TabsTrigger value="brains">
+                  <BrainIcon className="w-4 h-4 mr-2" />
+                  Cérebros
+                </TabsTrigger>
                 <TabsTrigger value="graph">
                   <Network className="w-4 h-4 mr-2" />
                   Grafo
@@ -276,6 +376,52 @@ const Notes = () => {
               </TabsList>
             </Tabs>
           </div>
+
+          {/* Brains View */}
+          {activeView === "brains" && (
+            <div className="flex-1 overflow-auto">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {brains.length} {brains.length === 1 ? 'cérebro' : 'cérebros'}
+                </p>
+                <Button
+                  onClick={() => {
+                    setPendingBrainNotes([]);
+                    setShowCreateBrainDialog(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Cérebro
+                </Button>
+              </div>
+              
+              {brains.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <BrainIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum Segundo Cérebro</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Conecte notas para criar automaticamente um cérebro, ou crie um manualmente.
+                  </p>
+                  <Button onClick={() => setShowCreateBrainDialog(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar Primeiro Cérebro
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {brains.map((brain) => (
+                    <BrainCard
+                      key={brain.id}
+                      brain={brain}
+                      noteCount={getNotesInBrain(brain.id).length}
+                      onClick={() => setSelectedBrain(brain)}
+                      onDelete={() => handleDeleteBrain(brain.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {activeView === "graph" ? (
             <Card className="flex-1 p-4">
@@ -289,7 +435,7 @@ const Notes = () => {
                 selectedNoteId={selectedNote?.id}
               />
             </Card>
-          ) : (
+          ) : activeView === "notes" && (
             <div className="flex-1 flex gap-6 min-h-0">
               {/* Notes List */}
               <Card className="w-80 flex flex-col shrink-0">
@@ -319,7 +465,18 @@ const Notes = () => {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                  {filteredNotes.length === 0 ? (
+                  {looseNotes.length === 0 && notes.length > 0 ? (
+                    <p className="text-muted-foreground text-sm p-4 text-center">
+                      Todas as notas estão em cérebros.
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto text-primary" 
+                        onClick={() => setActiveView("brains")}
+                      >
+                        Ver cérebros
+                      </Button>
+                    </p>
+                  ) : filteredNotes.length === 0 ? (
                     <p className="text-muted-foreground text-sm p-4 text-center">
                       {notes.length === 0 ? "Crie sua primeira nota" : "Nenhuma nota encontrada"}
                     </p>
@@ -536,6 +693,13 @@ const Notes = () => {
           )}
         </div>
       </main>
+
+      <CreateBrainDialog
+        open={showCreateBrainDialog}
+        onOpenChange={setShowCreateBrainDialog}
+        onCreateBrain={handleCreateBrain}
+        initialNoteCount={pendingBrainNotes.length}
+      />
     </div>
   );
 };
