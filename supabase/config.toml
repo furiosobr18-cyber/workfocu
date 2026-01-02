@@ -1,1 +1,4 @@
 project_id = "anzytdsnikxffiasksrp"
+
+[functions.security-log]
+verify_jwt = false

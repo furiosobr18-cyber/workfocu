@@ -7,12 +7,15 @@ import Logo from "@/components/Logo";
 import AuthCard from "@/components/AuthCard";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { registerSchema } from "@/lib/validation";
+import { logSecurityEvent } from "@/lib/security";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { signUp, user, loading } = useAuth();
 
@@ -24,28 +27,24 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
-    if (!name || !email || !password) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos.",
-        variant: "destructive"
+    // Validate input
+    const validation = registerSchema.safeParse({ name, email, password });
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
       });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive"
-      });
+      setErrors(fieldErrors);
       return;
     }
 
     setIsLoading(true);
     
-    const { error } = await signUp(email, password, name);
+    const { error } = await signUp(validation.data.email, validation.data.password, validation.data.name);
     
     if (error) {
       let message = "Erro ao criar conta. Tente novamente.";
@@ -55,7 +54,7 @@ const Register = () => {
       } else if (error.message.includes("Invalid email")) {
         message = "Email inválido.";
       } else if (error.message.includes("Password")) {
-        message = "A senha deve ter pelo menos 6 caracteres.";
+        message = "A senha não atende aos requisitos de segurança.";
       }
       
       toast({
@@ -66,6 +65,11 @@ const Register = () => {
       setIsLoading(false);
       return;
     }
+
+    await logSecurityEvent({
+      event_type: 'signup',
+      email: validation.data.email,
+    });
     
     toast({
       title: "Conta criada!",
@@ -111,9 +115,12 @@ const Register = () => {
               placeholder="Seu nome"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="auth-input"
-              required
+              className={errors.name ? "border-destructive" : ""}
+              autoComplete="name"
             />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -124,9 +131,12 @@ const Register = () => {
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="auth-input"
-              required
+              className={errors.email ? "border-destructive" : ""}
+              autoComplete="email"
             />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -137,14 +147,20 @@ const Register = () => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="auth-input"
-              required
+              className={errors.password ? "border-destructive" : ""}
+              autoComplete="new-password"
             />
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Mínimo 8 caracteres, com maiúscula, minúscula e número
+            </p>
           </div>
 
           <Button 
             type="submit" 
-            className="auth-button w-full"
+            className="w-full"
             disabled={isLoading}
           >
             {isLoading ? "Criando..." : "Criar conta"}
