@@ -68,11 +68,15 @@ const Notes = () => {
     getNotesInBrain,
     getLooseNoteIds,
     getBrainColor,
+    getRootBrains,
+    getChildBrains,
   } = useBrains(user?.id);
   
   const [selectedBrain, setSelectedBrain] = useState<Brain | null>(null);
+  const [brainStack, setBrainStack] = useState<Brain[]>([]); // Stack for navigation
   const [showCreateBrainDialog, setShowCreateBrainDialog] = useState(false);
   const [pendingBrainNotes, setPendingBrainNotes] = useState<string[]>([]);
+  const [isCreatingSubBrain, setIsCreatingSubBrain] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -296,15 +300,52 @@ const Notes = () => {
   );
 
   const handleCreateBrain = async (name: string, color: string) => {
-    await createBrain(name, pendingBrainNotes, color);
+    if (isCreatingSubBrain && selectedBrain) {
+      await createBrain(name, pendingBrainNotes, color, selectedBrain.id);
+    } else {
+      await createBrain(name, pendingBrainNotes, color);
+    }
     setPendingBrainNotes([]);
+    setIsCreatingSubBrain(false);
   };
 
   const handleDeleteBrain = async (brainId: string) => {
     await deleteBrain(brainId);
     if (selectedBrain?.id === brainId) {
+      // Go back to parent or root
+      if (brainStack.length > 0) {
+        const newStack = [...brainStack];
+        const parent = newStack.pop();
+        setBrainStack(newStack);
+        setSelectedBrain(parent || null);
+      } else {
+        setSelectedBrain(null);
+      }
+    }
+  };
+
+  const handleSelectBrain = (brain: Brain) => {
+    if (selectedBrain) {
+      setBrainStack([...brainStack, selectedBrain]);
+    }
+    setSelectedBrain(brain);
+  };
+
+  const handleBackFromBrain = () => {
+    if (brainStack.length > 0) {
+      const newStack = [...brainStack];
+      const parent = newStack.pop();
+      setBrainStack(newStack);
+      setSelectedBrain(parent || null);
+    } else {
       setSelectedBrain(null);
     }
+  };
+
+  const handleCreateSubBrain = () => {
+    setIsCreatingSubBrain(true);
+    setPendingBrainNotes([]);
+    setShowCreateBrainDialog(true);
   };
 
   if (loading) {
@@ -323,6 +364,7 @@ const Notes = () => {
   if (selectedBrain) {
     const brainNoteIds = getNotesInBrain(selectedBrain.id);
     const brainNotes = notes.filter(n => brainNoteIds.includes(n.id));
+    const childBrains = getChildBrains(selectedBrain.id);
     
     return (
       <div className="flex min-h-screen bg-background">
@@ -335,14 +377,31 @@ const Notes = () => {
               allNotes={notes}
               noteLinks={noteLinks}
               looseNotes={looseNotes}
-              onBack={() => setSelectedBrain(null)}
+              childBrains={childBrains}
+              onBack={handleBackFromBrain}
               onUpdateBrain={(updates) => updateBrain(selectedBrain.id, updates)}
               onAddNote={(noteId) => addNoteToBrain(selectedBrain.id, noteId)}
               onRemoveNote={(noteId) => removeNoteFromBrain(selectedBrain.id, noteId)}
               onSelectNote={selectNote}
+              onSelectBrain={handleSelectBrain}
+              onCreateSubBrain={handleCreateSubBrain}
+              onDeleteBrain={handleDeleteBrain}
+              getNotesInBrain={getNotesInBrain}
             />
           </div>
         </main>
+        
+        <CreateBrainDialog
+          open={showCreateBrainDialog}
+          onOpenChange={(open) => {
+            setShowCreateBrainDialog(open);
+            if (!open) setIsCreatingSubBrain(false);
+          }}
+          onCreateBrain={handleCreateBrain}
+          initialNoteCount={pendingBrainNotes.length}
+          isSubBrain={isCreatingSubBrain}
+          parentBrainName={selectedBrain.name}
+        />
       </div>
     );
   }
@@ -382,11 +441,12 @@ const Notes = () => {
             <div className="flex-1 overflow-auto">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {brains.length} {brains.length === 1 ? 'cérebro' : 'cérebros'}
+                  {getRootBrains().length} {getRootBrains().length === 1 ? 'cérebro' : 'cérebros'}
                 </p>
                 <Button
                   onClick={() => {
                     setPendingBrainNotes([]);
+                    setIsCreatingSubBrain(false);
                     setShowCreateBrainDialog(true);
                   }}
                 >
@@ -395,7 +455,7 @@ const Notes = () => {
                 </Button>
               </div>
               
-              {brains.length === 0 ? (
+              {getRootBrains().length === 0 ? (
                 <Card className="p-12 text-center">
                   <BrainIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum Segundo Cérebro</h3>
@@ -409,12 +469,13 @@ const Notes = () => {
                 </Card>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {brains.map((brain) => (
+                  {getRootBrains().map((brain) => (
                     <BrainCard
                       key={brain.id}
                       brain={brain}
                       noteCount={getNotesInBrain(brain.id).length}
-                      onClick={() => setSelectedBrain(brain)}
+                      subBrainCount={getChildBrains(brain.id).length}
+                      onClick={() => handleSelectBrain(brain)}
                       onDelete={() => handleDeleteBrain(brain.id)}
                     />
                   ))}

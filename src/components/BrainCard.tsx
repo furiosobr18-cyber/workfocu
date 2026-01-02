@@ -6,11 +6,12 @@ import { Trash2, Brain as BrainIcon, ChevronRight } from "lucide-react";
 interface BrainCardProps {
   brain: Brain;
   noteCount: number;
+  subBrainCount?: number;
   onClick: () => void;
   onDelete: () => void;
 }
 
-const BrainCard = ({ brain, noteCount, onClick, onDelete }: BrainCardProps) => {
+const BrainCard = ({ brain, noteCount, subBrainCount = 0, onClick, onDelete }: BrainCardProps) => {
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
 
   return (
@@ -27,6 +28,11 @@ const BrainCard = ({ brain, noteCount, onClick, onDelete }: BrainCardProps) => {
           <h3 className="font-semibold text-foreground text-lg truncate">{brain.name}</h3>
           <p className="text-sm text-muted-foreground">
             {noteCount} {noteCount === 1 ? 'nota' : 'notas'}
+            {subBrainCount > 0 && (
+              <span className="ml-2">
+                · {subBrainCount} {subBrainCount === 1 ? 'sub-cérebro' : 'sub-cérebros'}
+              </span>
+            )}
           </p>
         </div>
 

@@ -7,6 +7,7 @@ export interface Brain {
   user_id: string;
   name: string;
   color: string | null;
+  parent_brain_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +48,7 @@ export const useBrains = (userId: string | undefined) => {
       return;
     }
 
-    setBrains(data || []);
+    setBrains((data || []) as Brain[]);
   }, [userId]);
 
   const fetchBrainNotes = useCallback(async () => {
@@ -73,12 +74,27 @@ export const useBrains = (userId: string | undefined) => {
     }
   }, [userId, fetchBrains, fetchBrainNotes]);
 
-  const createBrain = async (name: string, noteIds: string[], color: string = 'blue') => {
+  const createBrain = async (
+    name: string, 
+    noteIds: string[], 
+    color: string = 'blue',
+    parentBrainId: string | null = null
+  ) => {
     if (!userId || !name.trim()) return null;
+
+    const insertData: { user_id: string; name: string; color: string; parent_brain_id?: string } = {
+      user_id: userId,
+      name: name.trim(),
+      color
+    };
+
+    if (parentBrainId) {
+      insertData.parent_brain_id = parentBrainId;
+    }
 
     const { data: brainData, error: brainError } = await supabase
       .from('brains')
-      .insert({ user_id: userId, name: name.trim(), color })
+      .insert(insertData)
       .select()
       .single();
 
@@ -107,9 +123,12 @@ export const useBrains = (userId: string | undefined) => {
       }
     }
 
-    setBrains(prev => [brainData, ...prev]);
-    toast({ title: "Cérebro criado!", description: `"${name}" foi criado com ${noteIds.length} nota(s).` });
-    return brainData;
+    setBrains(prev => [brainData as Brain, ...prev]);
+    toast({ 
+      title: parentBrainId ? "Segundo Cérebro criado!" : "Cérebro criado!", 
+      description: `"${name}" foi criado${noteIds.length > 0 ? ` com ${noteIds.length} nota(s)` : ''}.` 
+    });
+    return brainData as Brain;
   };
 
   const updateBrain = async (brainId: string, updates: Partial<Pick<Brain, 'name' | 'color'>>) => {
@@ -138,7 +157,8 @@ export const useBrains = (userId: string | undefined) => {
       return false;
     }
 
-    setBrains(prev => prev.filter(b => b.id !== brainId));
+    // Also remove child brains from state
+    setBrains(prev => prev.filter(b => b.id !== brainId && b.parent_brain_id !== brainId));
     setBrainNotes(prev => prev.filter(bn => bn.brain_id !== brainId));
     toast({ title: "Cérebro excluído" });
     return true;
@@ -206,6 +226,16 @@ export const useBrains = (userId: string | undefined) => {
     return BRAIN_COLORS.find(c => c.name === color) || BRAIN_COLORS[0];
   };
 
+  // Get root-level brains (no parent)
+  const getRootBrains = (): Brain[] => {
+    return brains.filter(b => !b.parent_brain_id);
+  };
+
+  // Get child brains of a specific brain
+  const getChildBrains = (parentBrainId: string): Brain[] => {
+    return brains.filter(b => b.parent_brain_id === parentBrainId);
+  };
+
   return {
     brains,
     brainNotes,
@@ -219,6 +249,8 @@ export const useBrains = (userId: string | undefined) => {
     getBrainForNote,
     getLooseNoteIds,
     getBrainColor,
+    getRootBrains,
+    getChildBrains,
     refetch: () => Promise.all([fetchBrains(), fetchBrainNotes()])
   };
 };
