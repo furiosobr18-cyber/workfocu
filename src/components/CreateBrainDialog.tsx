@@ -17,6 +17,8 @@ interface CreateBrainDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreateBrain: (name: string, color: string) => void;
   initialNoteCount?: number;
+  isSubBrain?: boolean;
+  parentBrainName?: string;
 }
 
 const CreateBrainDialog = ({
@@ -24,6 +26,8 @@ const CreateBrainDialog = ({
   onOpenChange,
   onCreateBrain,
   initialNoteCount = 0,
+  isSubBrain = false,
+  parentBrainName,
 }: CreateBrainDialogProps) => {
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState("blue");
@@ -37,17 +41,25 @@ const CreateBrainDialog = ({
     }
   };
 
+  const title = isSubBrain ? "Criar Segundo Cérebro" : "Criar Cérebro";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BrainIcon className="w-5 h-5 text-primary" />
-            Criar Segundo Cérebro
+            {title}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {isSubBrain && parentBrainName && (
+            <p className="text-sm text-muted-foreground">
+              Será criado dentro de <span className="font-medium text-foreground">"{parentBrainName}"</span>
+            </p>
+          )}
+
           {initialNoteCount > 0 && (
             <p className="text-sm text-muted-foreground">
               {initialNoteCount} {initialNoteCount === 1 ? 'nota conectada será adicionada' : 'notas conectadas serão adicionadas'} ao novo cérebro.
@@ -55,7 +67,7 @@ const CreateBrainDialog = ({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="brain-name">Nome do Cérebro</Label>
+            <Label htmlFor="brain-name">Nome do {isSubBrain ? 'Segundo Cérebro' : 'Cérebro'}</Label>
             <Input
               id="brain-name"
               placeholder="Ex: Projeto Alpha, Estudos, Ideias..."
@@ -89,7 +101,7 @@ const CreateBrainDialog = ({
             Cancelar
           </Button>
           <Button onClick={handleCreate} disabled={!name.trim()}>
-            Criar Cérebro
+            Criar {isSubBrain ? 'Segundo Cérebro' : 'Cérebro'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -12,6 +12,8 @@ import {
   Edit2,
   Check,
   Network,
+  ChevronRight,
+  Trash2,
 } from "lucide-react";
 import NoteGraph from "@/components/NoteGraph";
 
@@ -36,11 +38,16 @@ interface BrainDetailProps {
   allNotes: Note[];
   noteLinks: NoteLink[];
   looseNotes: Note[];
+  childBrains: Brain[];
   onBack: () => void;
   onUpdateBrain: (updates: Partial<Pick<Brain, 'name' | 'color'>>) => void;
   onAddNote: (noteId: string) => void;
   onRemoveNote: (noteId: string) => void;
   onSelectNote: (note: Note) => void;
+  onSelectBrain: (brain: Brain) => void;
+  onCreateSubBrain: () => void;
+  onDeleteBrain: (brainId: string) => void;
+  getNotesInBrain: (brainId: string) => string[];
 }
 
 const BrainDetail = ({
@@ -49,16 +56,21 @@ const BrainDetail = ({
   allNotes,
   noteLinks,
   looseNotes,
+  childBrains,
   onBack,
   onUpdateBrain,
   onAddNote,
   onRemoveNote,
   onSelectNote,
+  onSelectBrain,
+  onCreateSubBrain,
+  onDeleteBrain,
+  getNotesInBrain,
 }: BrainDetailProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(brain.name);
   const [showAddNotes, setShowAddNotes] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "graph">("list");
+  const [viewMode, setViewMode] = useState<"content" | "graph">("content");
 
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
 
@@ -129,16 +141,18 @@ const BrainDetail = ({
       {/* Stats & Controls */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
-          {brainNotes.length} {brainNotes.length === 1 ? 'nota' : 'notas'} · {filteredLinks.length} conexões
+          {brainNotes.length} {brainNotes.length === 1 ? 'nota' : 'notas'} · 
+          {childBrains.length} {childBrains.length === 1 ? 'sub-cérebro' : 'sub-cérebros'} · 
+          {filteredLinks.length} conexões
         </p>
 
         <div className="flex gap-2">
           <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
+            variant={viewMode === "content" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setViewMode("list")}
+            onClick={() => setViewMode("content")}
           >
-            Lista
+            Conteúdo
           </Button>
           <Button
             variant={viewMode === "graph" ? "secondary" : "ghost"}
@@ -147,14 +161,6 @@ const BrainDetail = ({
           >
             <Network className="w-4 h-4 mr-1" />
             Grafo
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddNotes(!showAddNotes)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Adicionar Nota
           </Button>
         </div>
       </div>
@@ -200,42 +206,118 @@ const BrainDetail = ({
           </div>
         ) : (
           <div className="h-full overflow-auto p-4">
-            {brainNotes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <BrainIcon className="w-12 h-12 mb-3 opacity-30" />
-                <p>Nenhuma nota neste cérebro</p>
-                <p className="text-sm">Adicione notas para começar</p>
+            {/* Sub-Brains Section */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Segundos Cérebros
+                </h3>
+                <Button variant="outline" size="sm" onClick={onCreateSubBrain}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Novo Sub-Cérebro
+                </Button>
               </div>
-            ) : (
-              <div className="grid gap-3">
-                {brainNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 cursor-pointer group"
-                    onClick={() => onSelectNote(note)}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{note.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(note.updated_at).toLocaleDateString("pt-BR")}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveNote(note.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 h-7 text-muted-foreground hover:text-destructive"
+
+              {childBrains.length === 0 ? (
+                <Card className="p-6 border-dashed text-center">
+                  <BrainIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">
+                    Crie sub-cérebros para organizar melhor suas ideias
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-2">
+                  {childBrains.map((childBrain) => {
+                    const childColor = BRAIN_COLORS.find(c => c.name === childBrain.color) || BRAIN_COLORS[0];
+                    const childNoteCount = getNotesInBrain(childBrain.id).length;
+                    
+                    return (
+                      <div
+                        key={childBrain.id}
+                        onClick={() => onSelectBrain(childBrain)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all group ${childColor.class} hover:shadow-md`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${childColor.dot}/20`}>
+                          <BrainIcon className={`w-4 h-4 ${childColor.text}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{childBrain.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {childNoteCount} {childNoteCount === 1 ? 'nota' : 'notas'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteBrain(childBrain.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 h-7 w-7 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Notes Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Notas
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddNotes(!showAddNotes)}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Adicionar Nota
+                </Button>
+              </div>
+
+              {brainNotes.length === 0 ? (
+                <Card className="p-6 border-dashed text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma nota neste cérebro
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-2">
+                  {brainNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 cursor-pointer group"
+                      onClick={() => onSelectNote(note)}
                     >
-                      <X className="w-3.5 h-3.5 mr-1" />
-                      Remover
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{note.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(note.updated_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveNote(note.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 h-7 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Card>

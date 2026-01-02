@@ -59,6 +59,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          parent_brain_id: string | null
           updated_at: string
           user_id: string
         }
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          parent_brain_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -75,10 +77,19 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          parent_brain_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brains_parent_brain_id_fkey"
+            columns: ["parent_brain_id"]
+            isOneToOne: false
+            referencedRelation: "brains"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendar_events: {
         Row: {
