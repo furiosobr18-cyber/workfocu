@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon } from "lucide-react";
+import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon, List, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import NoteGraph from "@/components/NoteGraph";
 import BrainCard from "@/components/BrainCard";
 import BrainDetail from "@/components/BrainDetail";
 import CreateBrainDialog from "@/components/CreateBrainDialog";
+import BrainTree from "@/components/BrainTree";
 import { useBrains, Brain } from "@/hooks/useBrains";
 import ReactMarkdown from "react-markdown";
 
@@ -41,6 +42,102 @@ const NOTE_COLORS = [
   { name: 'orange', class: 'bg-orange-500/10 border-orange-500/30', dot: 'bg-orange-500' },
   { name: 'pink', class: 'bg-pink-500/10 border-pink-500/30', dot: 'bg-pink-500' },
 ];
+
+// Brains View Component with Tree/Grid toggle
+interface BrainsViewContentProps {
+  brains: Brain[];
+  getRootBrains: () => Brain[];
+  getChildBrains: (parentId: string) => Brain[];
+  getNotesInBrain: (brainId: string) => string[];
+  onSelectBrain: (brain: Brain) => void;
+  onDeleteBrain: (brainId: string) => void;
+  onCreateBrain: () => void;
+}
+
+const BrainsViewContent = ({
+  brains,
+  getRootBrains,
+  getChildBrains,
+  getNotesInBrain,
+  onSelectBrain,
+  onDeleteBrain,
+  onCreateBrain,
+}: BrainsViewContentProps) => {
+  const [viewMode, setViewMode] = useState<"grid" | "tree">("grid");
+  
+  return (
+    <div className="flex-1 overflow-auto">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            {getRootBrains().length} {getRootBrains().length === 1 ? 'cérebro' : 'cérebros'}
+          </p>
+          
+          {/* View Toggle */}
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setViewMode("grid")}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "tree" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setViewMode("tree")}
+            >
+              <GitBranch className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <Button onClick={onCreateBrain}>
+          <Plus className="w-4 h-4 mr-2" />
+          Novo Cérebro
+        </Button>
+      </div>
+      
+      {getRootBrains().length === 0 ? (
+        <Card className="p-12 text-center">
+          <BrainIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum Segundo Cérebro</h3>
+          <p className="text-muted-foreground mb-4">
+            Conecte notas para criar automaticamente um cérebro, ou crie um manualmente.
+          </p>
+          <Button onClick={onCreateBrain}>
+            <Plus className="w-4 h-4 mr-2" />
+            Criar Primeiro Cérebro
+          </Button>
+        </Card>
+      ) : viewMode === "tree" ? (
+        <Card className="p-4">
+          <BrainTree
+            brains={brains}
+            getChildBrains={getChildBrains}
+            getNotesInBrain={getNotesInBrain}
+            onSelectBrain={onSelectBrain}
+          />
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {getRootBrains().map((brain) => (
+            <BrainCard
+              key={brain.id}
+              brain={brain}
+              noteCount={getNotesInBrain(brain.id).length}
+              subBrainCount={getChildBrains(brain.id).length}
+              onClick={() => onSelectBrain(brain)}
+              onDelete={() => onDeleteBrain(brain.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Notes = () => {
   const { user, loading } = useAuth();
@@ -438,50 +535,19 @@ const Notes = () => {
 
           {/* Brains View */}
           {activeView === "brains" && (
-            <div className="flex-1 overflow-auto">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-foreground">
-                  {getRootBrains().length} {getRootBrains().length === 1 ? 'cérebro' : 'cérebros'}
-                </p>
-                <Button
-                  onClick={() => {
-                    setPendingBrainNotes([]);
-                    setIsCreatingSubBrain(false);
-                    setShowCreateBrainDialog(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Cérebro
-                </Button>
-              </div>
-              
-              {getRootBrains().length === 0 ? (
-                <Card className="p-12 text-center">
-                  <BrainIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum Segundo Cérebro</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Conecte notas para criar automaticamente um cérebro, ou crie um manualmente.
-                  </p>
-                  <Button onClick={() => setShowCreateBrainDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Criar Primeiro Cérebro
-                  </Button>
-                </Card>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {getRootBrains().map((brain) => (
-                    <BrainCard
-                      key={brain.id}
-                      brain={brain}
-                      noteCount={getNotesInBrain(brain.id).length}
-                      subBrainCount={getChildBrains(brain.id).length}
-                      onClick={() => handleSelectBrain(brain)}
-                      onDelete={() => handleDeleteBrain(brain.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <BrainsViewContent
+              brains={brains}
+              getRootBrains={getRootBrains}
+              getChildBrains={getChildBrains}
+              getNotesInBrain={getNotesInBrain}
+              onSelectBrain={handleSelectBrain}
+              onDeleteBrain={handleDeleteBrain}
+              onCreateBrain={() => {
+                setPendingBrainNotes([]);
+                setIsCreatingSubBrain(false);
+                setShowCreateBrainDialog(true);
+              }}
+            />
           )}
 
           {activeView === "graph" ? (
