@@ -241,6 +241,36 @@ const Notes = () => {
     setIsCreating(false);
   };
 
+  // Create note directly inside a brain
+  const createNoteInBrain = async (title: string, brainId: string) => {
+    if (!title.trim() || !user) return null;
+    
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({ user_id: user.id, title: title.trim(), content: "" })
+      .select()
+      .single();
+    
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível criar a nota.", variant: "destructive" });
+      return null;
+    }
+    
+    if (data) {
+      setNotes([data, ...notes]);
+      // Add to brain
+      await addNoteToBrain(brainId, data.id);
+      setSelectedNote(data);
+      setEditContent("");
+      setEditMode("edit");
+      setSelectedBrain(null); // Go to note editing
+      toast({ title: "Nota criada no cérebro!" });
+      return data;
+    }
+    
+    return null;
+  };
+
   const updateNote = async () => {
     if (!selectedNote) return;
     
@@ -484,6 +514,7 @@ const Notes = () => {
               onCreateSubBrain={handleCreateSubBrain}
               onDeleteBrain={handleDeleteBrain}
               getNotesInBrain={getNotesInBrain}
+              onCreateNoteInBrain={(title) => createNoteInBrain(title, selectedBrain.id)}
             />
           </div>
         </main>
