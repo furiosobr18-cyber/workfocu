@@ -14,6 +14,7 @@ import {
   Network,
   ChevronRight,
   Trash2,
+  FileText,
 } from "lucide-react";
 import NoteGraph from "@/components/NoteGraph";
 
@@ -48,6 +49,7 @@ interface BrainDetailProps {
   onCreateSubBrain: () => void;
   onDeleteBrain: (brainId: string) => void;
   getNotesInBrain: (brainId: string) => string[];
+  onCreateNoteInBrain: (title: string) => Promise<Note | null>;
 }
 
 const BrainDetail = ({
@@ -66,11 +68,15 @@ const BrainDetail = ({
   onCreateSubBrain,
   onDeleteBrain,
   getNotesInBrain,
+  onCreateNoteInBrain,
 }: BrainDetailProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(brain.name);
   const [showAddNotes, setShowAddNotes] = useState(false);
   const [viewMode, setViewMode] = useState<"content" | "graph">("content");
+  const [showCreateNote, setShowCreateNote] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
 
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
 
@@ -79,6 +85,16 @@ const BrainDetail = ({
       onUpdateBrain({ name: editName.trim() });
     }
     setIsEditing(false);
+  };
+
+  const handleCreateNote = async () => {
+    if (!newNoteTitle.trim()) return;
+    
+    setIsCreatingNote(true);
+    await onCreateNoteInBrain(newNoteTitle.trim());
+    setNewNoteTitle("");
+    setShowCreateNote(false);
+    setIsCreatingNote(false);
   };
 
   // Filter links to only show connections within this brain
@@ -271,23 +287,70 @@ const BrainDetail = ({
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Notas
                 </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddNotes(!showAddNotes)}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Adicionar Nota
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowCreateNote(!showCreateNote)}
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Nova Nota
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddNotes(!showAddNotes)}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar Existente
+                  </Button>
+                </div>
               </div>
 
-              {brainNotes.length === 0 ? (
+              {/* Create Note Form */}
+              {showCreateNote && (
+                <Card className="p-4 mb-4 border-primary/30 bg-primary/5">
+                  <p className="text-sm font-medium text-foreground mb-3">Criar nova nota neste cérebro:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newNoteTitle}
+                      onChange={(e) => setNewNoteTitle(e.target.value)}
+                      placeholder="Título da nota..."
+                      className="flex-1"
+                      autoFocus
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateNote()}
+                    />
+                    <Button 
+                      onClick={handleCreateNote} 
+                      disabled={!newNoteTitle.trim() || isCreatingNote}
+                    >
+                      {isCreatingNote ? "Criando..." : "Criar"}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setShowCreateNote(false);
+                        setNewNoteTitle("");
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {brainNotes.length === 0 && !showCreateNote ? (
                 <Card className="p-6 border-dashed text-center">
-                  <p className="text-sm text-muted-foreground">
+                  <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground mb-3">
                     Nenhuma nota neste cérebro
                   </p>
+                  <Button size="sm" onClick={() => setShowCreateNote(true)}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Criar primeira nota
+                  </Button>
                 </Card>
-              ) : (
+              ) : brainNotes.length > 0 && (
                 <div className="grid gap-2">
                   {brainNotes.map((note) => (
                     <div
