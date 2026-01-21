@@ -804,22 +804,22 @@ const Notes = () => {
                     <div className="flex-1 overflow-hidden">
                       {editMode === "preview" ? (
                         <div className="h-full overflow-auto p-6">
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <div className="prose prose-sm dark:prose-invert max-w-none font-mono text-sm">
                             <ReactMarkdown
                               components={{
-                                h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4">{children}</h3>,
-                                p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed">{children}</p>,
-                                ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1">{children}</ul>,
-                                ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1">{children}</ol>,
-                                li: ({ children }) => <li className="text-foreground">{children}</li>,
+                                h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0 font-mono">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5 font-mono">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4 font-mono">{children}</h3>,
+                                p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed font-mono">{children}</p>,
+                                ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1 font-mono">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1 font-mono">{children}</ol>,
+                                li: ({ children }) => <li className="text-foreground font-mono">{children}</li>,
                                 strong: ({ children }) => <strong className="font-bold">{children}</strong>,
                                 em: ({ children }) => <em className="italic">{children}</em>,
                                 code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary">{children}</code>,
-                                pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3">{children}</pre>,
-                                blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3">{children}</blockquote>,
-                                a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80">{children}</a>,
+                                pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3 font-mono">{children}</pre>,
+                                blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3 font-mono">{children}</blockquote>,
+                                a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80 font-mono">{children}</a>,
                                 hr: () => <hr className="border-border my-4" />,
                               }}
                             >
