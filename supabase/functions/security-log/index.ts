@@ -14,15 +14,9 @@ interface SecurityLogRequest {
   metadata?: Record<string, unknown>;
 }
 
-// Simple hash function for email (for logging without exposing actual email)
-function hashEmail(email: string): string {
-  let hash = 0;
-  for (let i = 0; i < email.length; i++) {
-    const char = email.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(36);
+// Validate event_type is one of the allowed values
+function isValidEventType(type: string): type is SecurityLogRequest['event_type'] {
+  return ['login_attempt', 'login_success', 'login_failure', 'signup', 'password_reset', 'logout'].includes(type);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -32,16 +26,73 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
       throw new Error("Missing Supabase configuration");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Verify JWT authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log("Security log request rejected: Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Create client with user's auth token to verify their identity
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log("Security log request rejected: Invalid token", claimsError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Use service role client for database operations (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validate request body size (max 10KB)
+    const contentLength = req.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 10240) {
+      return new Response(
+        JSON.stringify({ error: "Request too large" }),
+        {
+          status: 413,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
 
     const body: SecurityLogRequest = await req.json();
     const { event_type, email_hash, user_agent, ip_hint, metadata } = body;
+
+    // Validate event_type
+    if (!event_type || !isValidEventType(event_type)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid event_type" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
 
     // Rate limiting check - max 10 attempts per email hash per minute
     if (email_hash && (event_type === 'login_attempt' || event_type === 'login_failure')) {
@@ -55,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
         .gte('created_at', oneMinuteAgo);
 
       if (count && count >= 10) {
-        console.log(`Rate limit exceeded for hash: ${email_hash}`);
+        console.log(`Rate limit exceeded for authenticated user`);
         return new Response(
           JSON.stringify({ 
             error: "Too many attempts", 
@@ -75,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('security_logs')
       .insert({
         event_type,
-        email_hash,
+        email_hash: email_hash?.substring(0, 100), // Limit hash length
         user_agent: user_agent?.substring(0, 500),
         ip_hint: ip_hint?.substring(0, 50),
         metadata,
