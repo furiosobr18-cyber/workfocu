@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -594,9 +595,10 @@ const Notes = () => {
               />
             </Card>
           ) : activeView === "notes" && (
-            <div className="flex-1 flex gap-6 min-h-0">
-              {/* Notes List */}
-              <Card className="w-80 flex flex-col shrink-0">
+            <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+              <ResizablePanel defaultSize={25} minSize={15} maxSize={50}>
+                {/* Notes List */}
+                <Card className="h-full flex flex-col mr-3">
                 <div className="p-4 border-b border-border space-y-3">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -687,10 +689,14 @@ const Notes = () => {
                     })
                   )}
                 </div>
-              </Card>
+                </Card>
+              </ResizablePanel>
 
-              {/* Editor */}
-              <Card className="flex-1 flex flex-col min-w-0">
+              <ResizableHandle withHandle />
+
+              <ResizablePanel defaultSize={75} minSize={40}>
+                {/* Editor */}
+                <Card className="h-full flex flex-col min-w-0 ml-3">
                 {selectedNote ? (
                   <>
                     {/* Note Header */}
@@ -846,8 +852,9 @@ const Notes = () => {
                     </div>
                   </div>
                 )}
-              </Card>
-            </div>
+                </Card>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           )}
         </div>
       </main>
