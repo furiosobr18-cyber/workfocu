@@ -8,6 +8,7 @@ import AuthCard from "@/components/AuthCard";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { KeyRound, CheckCircle } from "lucide-react";
+import { resetPasswordSchema } from "@/lib/validation";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -40,28 +41,13 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!password || !confirmPassword) {
+    // Validate using the schema for consistent password requirements
+    const validation = resetPasswordSchema.safeParse({ password, confirmPassword });
+    if (!validation.success) {
+      const firstError = validation.error.issues[0]?.message || "Erro de validação";
       toast({
         title: "Erro",
-        description: "Preencha todos os campos.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
+        description: firstError,
         variant: "destructive"
       });
       return;
@@ -70,7 +56,7 @@ const ResetPassword = () => {
     setIsLoading(true);
     
     const { error } = await supabase.auth.updateUser({
-      password: password
+      password: validation.data.password
     });
     
     if (error) {
