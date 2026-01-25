@@ -166,6 +166,7 @@ const Notes = () => {
     getNotesInBrain,
     getLooseNoteIds,
     getBrainColor,
+    getBrainForNote,
     getRootBrains,
     getChildBrains,
   } = useBrains(user?.id);
@@ -610,18 +611,21 @@ const Notes = () => {
                     />
                   </div>
                   
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Nova nota..."
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="flex-1"
-                      onKeyDown={(e) => e.key === 'Enter' && createNote()}
-                    />
-                    <Button onClick={createNote} disabled={isCreating || !newTitle.trim()} size="icon">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {/* Esconder "Nova nota" se a nota selecionada pertence a um cérebro */}
+                  {!(selectedNote && getBrainForNote(selectedNote.id)) && (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nova nota..."
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && createNote()}
+                      />
+                      <Button onClick={createNote} disabled={isCreating || !newTitle.trim()} size="icon">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
