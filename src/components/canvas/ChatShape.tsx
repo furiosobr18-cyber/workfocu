@@ -7,6 +7,7 @@ import {
   TLResizeInfo,
   resizeBox,
   RecordProps,
+  useEditor,
 } from "tldraw";
 import ReactMarkdown from "react-markdown";
 import { TargetDot } from "./YouTubeShape";
@@ -46,6 +47,7 @@ function getYouTubeUrl(url: string): string {
 }
 
 function ChatComponent({ shape }: { shape: ChatShape }) {
+  const editor = useEditor();
   const { getConnectionsForChat, completeLinking, linkingFrom } = useConnections();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try { return JSON.parse(shape.props.messages || "[]"); } catch { return []; }
@@ -57,6 +59,42 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [memory, setMemory] = useState(shape.props.memory || "");
   const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist messages to shape props (debounced)
+  const persistMessages = useCallback((msgs: ChatMessage[]) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { messages: JSON.stringify(msgs) } });
+      } catch { /* shape may have been deleted */ }
+    }, 500);
+  }, [editor, shape.id, shape.type]);
+
+  // Persist memory to shape props (debounced)
+  const persistMemory = useCallback((mem: string) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { memory: mem } });
+      } catch { /* shape may have been deleted */ }
+    }, 500);
+  }, [editor, shape.id, shape.type]);
+
+  // Override setMessages to also persist
+  const updateMessages = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    setMessages((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      persistMessages(next);
+      return next;
+    });
+  }, [persistMessages]);
+
+  // Override setMemory to also persist
+  const updateMemory = useCallback((val: string) => {
+    setMemory(val);
+    persistMemory(val);
+  }, [persistMemory]);
 
   const connections = getConnectionsForChat(shape.id);
 
@@ -112,7 +150,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     const userContent = input.trim();
     const userMsg: ChatMessage = { role: "user", content: userContent };
     const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    updateMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
@@ -165,7 +203,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
-              setMessages((prev) => {
+              updateMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.role === "assistant") {
                   return prev.map((m, i) =>
@@ -183,14 +221,14 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
       }
     } catch (e) {
       console.error("Chat error:", e);
-      setMessages((prev) => [
+      updateMessages((prev) => [
         ...prev,
         { role: "assistant", content: `❌ ${e instanceof Error ? e.message : "Erro desconhecido"}` },
       ]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, messages, isLoading, selectedModel, buildContext]);
+  }, [input, messages, isLoading, selectedModel, buildContext, memory, updateMessages]);
 
   const handleTargetClick = useCallback(() => {
     if (linkingFrom) {
@@ -330,7 +368,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             </div>
             <textarea
               value={memory}
-              onChange={(e) => setMemory(e.target.value)}
+              onChange={(e) => updateMemory(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
               placeholder="Ex: Sempre responda em português. Seja objetivo. Foque em código React..."
               style={{
