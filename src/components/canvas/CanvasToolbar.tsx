@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3 } from "lucide-react";
 import { Editor } from "tldraw";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
 interface CanvasToolbarProps {
@@ -11,15 +11,26 @@ interface CanvasToolbarProps {
 const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   const { theme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<string>("select");
+  const [zoomLevel, setZoomLevel] = useState(100);
+
+  useEffect(() => {
+    if (!editor) return;
+    
+    const updateState = () => {
+      setZoomLevel(Math.round(editor.getZoomLevel() * 100));
+      setActiveTool(editor.getCurrentToolId());
+    };
+    
+    updateState();
+    const unsubscribe = editor.store.listen(updateState);
+    return () => unsubscribe();
+  }, [editor]);
 
   if (!editor) return null;
 
   const selectTool = (tool: string) => {
-    setActiveTool(tool);
     editor.setCurrentTool(tool);
   };
-
-  const zoomLevel = Math.round((editor.getZoomLevel?.() ?? 1) * 100);
 
   const addShape = (type: string) => {
     const { x, y } = editor.getViewportScreenCenter();
