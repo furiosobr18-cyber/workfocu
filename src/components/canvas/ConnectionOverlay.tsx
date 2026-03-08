@@ -11,7 +11,7 @@ interface LinePos {
 }
 
 export default function ConnectionOverlay({ editor }: { editor: Editor | null }) {
-  const { connections, linkingFrom } = useConnections();
+  const { connections, linkingFrom, removeConnection } = useConnections();
   const [lines, setLines] = useState<LinePos[]>([]);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
