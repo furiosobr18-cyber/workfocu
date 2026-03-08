@@ -26,14 +26,21 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canvas-chat`;
 
 const AI_MODELS = [
-  { id: "google/gemini-3-flash-preview", label: "Gemini Flash", emoji: "⚡" },
-  { id: "google/gemini-2.5-pro", label: "Gemini Pro", emoji: "🧠" },
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", emoji: "💨" },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini Lite", emoji: "🪶" },
-  { id: "openai/gpt-5", label: "GPT-5", emoji: "🤖" },
-  { id: "openai/gpt-5-mini", label: "GPT-5 Mini", emoji: "🔹" },
-  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", emoji: "⚛️" },
-  { id: "openai/gpt-5.2", label: "GPT-5.2", emoji: "🚀" },
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", emoji: "🦙" },
+  { id: "llama3-70b-8192", label: "Llama 3 70B", emoji: "🦙" },
+  { id: "llama3-8b-8192", label: "Llama 3 8B", emoji: "⚡" },
+  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", emoji: "💨" },
+  { id: "llama-3.2-90b-vision-preview", label: "Llama 3.2 90B Vision", emoji: "👁️" },
+  { id: "llama-3.2-11b-vision-preview", label: "Llama 3.2 11B Vision", emoji: "👁️" },
+  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick", emoji: "🚀" },
+  { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout", emoji: "🔍" },
+  { id: "deepseek-r1-distill-llama-70b", label: "DeepSeek R1 70B", emoji: "🧠" },
+  { id: "gemma2-9b-it", label: "Gemma 2 9B", emoji: "💎" },
+  { id: "mistral-saba-24b", label: "Mistral Saba 24B", emoji: "🌊" },
+  { id: "qwen-qwq-32b", label: "Qwen QWQ 32B", emoji: "🔮" },
+  { id: "allam-2-7b-instruct", label: "Allam 2 7B", emoji: "🌙" },
+  { id: "compound-beta", label: "Compound Beta", emoji: "🧪" },
+  { id: "compound-beta-mini", label: "Compound Mini", emoji: "🔹" },
 ];
 
 // Helper to get YouTube URL from shape

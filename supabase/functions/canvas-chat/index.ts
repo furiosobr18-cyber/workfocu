@@ -10,25 +10,36 @@ serve(async (req) => {
 
   try {
     const { messages, model } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
     const allowedModels = [
-      "google/gemini-3-flash-preview",
-      "google/gemini-2.5-pro",
-      "google/gemini-2.5-flash",
-      "google/gemini-2.5-flash-lite",
-      "openai/gpt-5",
-      "openai/gpt-5-mini",
-      "openai/gpt-5-nano",
-      "openai/gpt-5.2",
+      "allam-2-7b-instruct",
+      "compound-beta",
+      "compound-beta-mini",
+      "deepseek-r1-distill-llama-70b",
+      "gemma2-9b-it",
+      "llama-3.1-8b-instant",
+      "llama-3.2-11b-vision-preview",
+      "llama-3.2-1b-preview",
+      "llama-3.2-3b-preview",
+      "llama-3.2-90b-vision-preview",
+      "llama-3.3-70b-versatile",
+      "llama-guard-3-8b",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "meta-llama/llama-4-maverick-17b-128e-instruct",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+      "mistral-saba-24b",
+      "playai/play-dialog-mini",
+      "qwen-qwq-32b",
     ];
-    const selectedModel = allowedModels.includes(model) ? model : "google/gemini-3-flash-preview";
+    const selectedModel = allowedModels.includes(model) ? model : "llama-3.3-70b-versatile";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -49,13 +60,13 @@ serve(async (req) => {
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Groq API error:", response.status, t);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
