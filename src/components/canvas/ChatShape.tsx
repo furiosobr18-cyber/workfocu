@@ -414,11 +414,11 @@ export class ChatShapeUtil extends BaseBoxShapeUtil<ChatShape> {
   static override type = "canvas-chat" as const;
 
   static override props: RecordProps<ChatShape> = {
-    w: T.number, h: T.number, messages: T.string,
+    w: T.number, h: T.number, messages: T.string, memory: T.string,
   };
 
   getDefaultProps(): ChatShape["props"] {
-    return { w: 350, h: 420, messages: "[]" };
+    return { w: 350, h: 420, messages: "[]", memory: "" };
   }
 
   override canResize() { return true; }
