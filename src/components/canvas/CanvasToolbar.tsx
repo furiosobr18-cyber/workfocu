@@ -128,6 +128,7 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
             ))}
           </div>
         )}
+      </div>
 
       {/* Separator */}
       <div className="w-px h-5 bg-border mx-1" />
