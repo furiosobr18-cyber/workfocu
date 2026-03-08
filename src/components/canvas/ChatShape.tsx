@@ -38,12 +38,20 @@ const AI_MODELS = [
   { id: "mistral-saba-24b", label: "Mistral Saba 24B", emoji: "🌊" },
 ];
 
-// Helper to get YouTube URL from shape
+// Helper to normalize YouTube URL
 function getYouTubeUrl(url: string): string {
   const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/
   );
   return match ? `https://www.youtube.com/watch?v=${match[1]}` : url;
+}
+
+// Extract YouTube video ID for display
+function getYouTubeId(url: string): string | null {
+  const match = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
 }
 
 function ChatComponent({ shape }: { shape: ChatShape }) {
