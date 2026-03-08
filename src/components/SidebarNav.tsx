@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Sun, Moon, LogOut } from "lucide-react";
+import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Eye, Brain, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
