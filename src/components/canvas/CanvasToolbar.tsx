@@ -118,6 +118,13 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         <Image className="w-4 h-4" />
       </button>
       <button
+        onClick={() => addShape("canvas-video")}
+        title="Vídeo"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Video className="w-4 h-4" />
+      </button>
+      <button
         onClick={() => addShape("canvas-file")}
         title="Arquivo"
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
