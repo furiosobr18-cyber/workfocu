@@ -311,7 +311,41 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           )}
         </div>
 
-        {/* Connected sources indicator */}
+        {/* Memory panel */}
+        {showMemory && (
+          <div
+            style={{
+              padding: "8px 10px",
+              background: "#18182e",
+              borderBottom: "1px solid #2a2a40",
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 11, color: "#8080c0", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>🧠 Memória (instruções persistentes)</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMemory(false); }}
+                style={{ background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 14 }}
+              >✕</button>
+            </div>
+            <textarea
+              value={memory}
+              onChange={(e) => setMemory(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder="Ex: Sempre responda em português. Seja objetivo. Foque em código React..."
+              style={{
+                width: "100%", minHeight: 60, maxHeight: 120, resize: "vertical",
+                background: "#12121f", border: "1px solid #3a3a55", borderRadius: 6,
+                padding: "6px 8px", color: "#d0d0ff", fontSize: 11, outline: "none",
+                fontFamily: "inherit", lineHeight: 1.4,
+              }}
+            />
+            <div style={{ fontSize: 10, color: "#5050a0", marginTop: 3 }}>
+              Essa memória será enviada em todas as mensagens como contexto.
+            </div>
+          </div>
+        )}
+
         {connections.length > 0 && (
           <div
             style={{
