@@ -55,8 +55,6 @@ function CanvasInner() {
 
   const handleMount = useCallback((editor: Editor) => {
     setEditor(editor);
-    // Set dark mode
-    editor.user.updateUserPreferences({ colorScheme: 'dark' });
   }, []);
 
   // Sync current tldraw page to connection context
