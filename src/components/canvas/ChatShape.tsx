@@ -150,7 +150,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     const userContent = input.trim();
     const userMsg: ChatMessage = { role: "user", content: userContent };
     const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    updateMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
