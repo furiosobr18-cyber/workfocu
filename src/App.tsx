@@ -13,6 +13,8 @@ import Tasks from "./pages/Tasks";
 import Notes from "./pages/Notes";
 import CalendarPage from "./pages/CalendarPage";
 import Canvas from "./pages/Canvas";
+import AccountabilityMirror from "./pages/AccountabilityMirror";
+import FortyPercentRule from "./pages/FortyPercentRule";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
