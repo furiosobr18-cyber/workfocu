@@ -47,6 +47,7 @@ function getYouTubeUrl(url: string): string {
 }
 
 function ChatComponent({ shape }: { shape: ChatShape }) {
+  const editor = useEditor();
   const { getConnectionsForChat, completeLinking, linkingFrom } = useConnections();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try { return JSON.parse(shape.props.messages || "[]"); } catch { return []; }
@@ -58,6 +59,42 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [memory, setMemory] = useState(shape.props.memory || "");
   const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist messages to shape props (debounced)
+  const persistMessages = useCallback((msgs: ChatMessage[]) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { messages: JSON.stringify(msgs) } });
+      } catch { /* shape may have been deleted */ }
+    }, 500);
+  }, [editor, shape.id, shape.type]);
+
+  // Persist memory to shape props (debounced)
+  const persistMemory = useCallback((mem: string) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { memory: mem } });
+      } catch { /* shape may have been deleted */ }
+    }, 500);
+  }, [editor, shape.id, shape.type]);
+
+  // Override setMessages to also persist
+  const updateMessages = useCallback((updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    setMessages((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      persistMessages(next);
+      return next;
+    });
+  }, [persistMessages]);
+
+  // Override setMemory to also persist
+  const updateMemory = useCallback((val: string) => {
+    setMemory(val);
+    persistMemory(val);
+  }, [persistMemory]);
 
   const connections = getConnectionsForChat(shape.id);
 
