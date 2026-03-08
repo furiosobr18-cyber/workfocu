@@ -221,7 +221,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
       }
     } catch (e) {
       console.error("Chat error:", e);
-      setMessages((prev) => [
+      updateMessages((prev) => [
         ...prev,
         { role: "assistant", content: `❌ ${e instanceof Error ? e.message : "Erro desconhecido"}` },
       ]);
