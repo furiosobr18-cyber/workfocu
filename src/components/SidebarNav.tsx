@@ -79,7 +79,7 @@ const SidebarNav = () => {
           ))}
         </ul>
 
-        {/* DG Section */}
+        {/* DG - David Goggins Section */}
         <div className="mt-5 pt-4 border-t border-sidebar-border">
           <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             DG
