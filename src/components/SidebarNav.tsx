@@ -75,28 +75,6 @@ const SidebarNav = () => {
           ))}
         </ul>
 
-        {/* DG - David Goggins Section */}
-        <div className="mt-5 pt-4 border-t border-sidebar-border">
-          <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            DG
-          </span>
-          <ul className="mt-2 space-y-1">
-            {dgItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === item.path && "sidebar-link-active"
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-xs">{item.label}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
       </nav>
 
       {/* Bottom Section */}

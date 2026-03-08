@@ -35,8 +35,7 @@ const App = () => (
           <Route path="/notes" element={<Notes />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/canvas" element={<Canvas />} />
-          <Route path="/accountability-mirror" element={<AccountabilityMirror />} />
-          <Route path="/forty-percent-rule" element={<FortyPercentRule />} />
+          <Route path="/dg" element={<DG />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
