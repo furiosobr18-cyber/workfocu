@@ -59,35 +59,31 @@ function CanvasInner() {
 
   // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
   useEffect(() => {
-    let justStartedLinking = false;
+    let linkStartTime = 0;
 
     const handleDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
 
-      // Source dot: start dragging wire
       const sourceId = target.getAttribute("data-connection-source");
       const sourceType = target.getAttribute("data-connection-type");
       if (sourceId && sourceType) {
         e.stopPropagation();
         e.preventDefault();
         startLinking(sourceId, sourceType);
-        justStartedLinking = true;
-        // Reset flag after a tick so the immediate pointerup is ignored
-        requestAnimationFrame(() => {
-          justStartedLinking = false;
-        });
+        linkStartTime = Date.now();
         return;
       }
     };
 
     const handleUp = (e: PointerEvent) => {
       if (!linkingFrom) return;
-      // Ignore the pointerup that fires right after pointerdown on the source dot
-      if (justStartedLinking) return;
+
+      // Ignore quick releases (< 200ms) — user is still clicking, not releasing a drag
+      if (Date.now() - linkStartTime < 200) return;
 
       const target = e.target as HTMLElement;
 
-      // Also ignore if releasing on a source dot (user just finished pressing it)
+      // Ignore if releasing on a source dot
       if (target.getAttribute("data-connection-source")) return;
 
       const targetId = target.getAttribute("data-connection-target");
@@ -100,11 +96,27 @@ function CanvasInner() {
       }
     };
 
+    // Also support click-click: click source, then click target
+    const handleClick = (e: MouseEvent) => {
+      if (!linkingFrom) return;
+      if (Date.now() - linkStartTime < 200) return; // ignore the initial click
+
+      const target = e.target as HTMLElement;
+      const targetId = target.getAttribute("data-connection-target");
+      if (targetId) {
+        e.stopPropagation();
+        e.preventDefault();
+        completeLinking(targetId);
+      }
+    };
+
     document.addEventListener("pointerdown", handleDown, true);
     document.addEventListener("pointerup", handleUp, true);
+    document.addEventListener("click", handleClick, true);
     return () => {
       document.removeEventListener("pointerdown", handleDown, true);
       document.removeEventListener("pointerup", handleUp, true);
+      document.removeEventListener("click", handleClick, true);
     };
   }, [startLinking, completeLinking, cancelLinking, linkingFrom]);
 
