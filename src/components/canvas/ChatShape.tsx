@@ -368,7 +368,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             </div>
             <textarea
               value={memory}
-              onChange={(e) => setMemory(e.target.value)}
+              onChange={(e) => updateMemory(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
               placeholder="Ex: Sempre responda em português. Seja objetivo. Foque em código React..."
               style={{
