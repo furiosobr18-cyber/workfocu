@@ -10,11 +10,12 @@ import { YouTubeShapeUtil } from "@/components/canvas/YouTubeShape";
 import { ImageShapeUtil } from "@/components/canvas/ImageShape";
 import { FileShapeUtil } from "@/components/canvas/FileShape";
 import { ChatShapeUtil } from "@/components/canvas/ChatShape";
+import { VideoShapeUtil } from "@/components/canvas/VideoShape";
 import CanvasToolbar from "@/components/canvas/CanvasToolbar";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 
-const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil];
+const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
 
 function isTextLikeMime(fileType: string): boolean {
   const t = (fileType || "").toLowerCase();
