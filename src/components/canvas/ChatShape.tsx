@@ -409,6 +409,17 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                 "canvas-image": "🖼️",
                 "canvas-file": "📎",
               };
+              const shapeDataMap = (window as any).__canvasShapeData || {};
+              const data = shapeDataMap[conn.sourceId];
+              let label = "Conectado";
+              if (data?.type === "youtube" && data.url) {
+                const vid = getYouTubeId(data.url);
+                label = vid ? `YouTube (${vid.slice(0, 6)}...)` : "YouTube";
+              } else if (data?.type === "canvas-image") {
+                label = data.name || "Imagem";
+              } else if (data?.type === "canvas-file") {
+                label = data.name || "Arquivo";
+              }
               return (
                 <span
                   key={conn.id}
@@ -423,7 +434,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                     gap: 3,
                   }}
                 >
-                  {icons[conn.sourceType] || "📦"} Conectado
+                  {icons[conn.sourceType] || "📦"} {label}
                 </span>
               );
             })}
