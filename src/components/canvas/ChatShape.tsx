@@ -351,6 +351,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           ➤
         </button>
       </div>
+      </div>
     </div>
   );
 }
