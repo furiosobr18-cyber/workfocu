@@ -138,57 +138,7 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
   }
 
   component(shape: YouTubeShape) {
-    const videoId = getYouTubeId(shape.props.url);
-
-    if (!videoId && !shape.props.url) {
-      return (
-        <HTMLContainer style={{
-          width: shape.props.w, height: shape.props.h,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "hsl(0,0%,10%)", borderRadius: 12, border: "2px dashed hsl(0,0%,20%)",
-          color: "hsl(0,0%,50%)", fontSize: 14, flexDirection: "column", gap: 8,
-          pointerEvents: "all", position: "relative", overflow: "visible",
-        }}>
-          <SourceDot shapeId={shape.id} shapeType="youtube" />
-          <span style={{ fontSize: 32 }}>🎬</span>
-          <span>Clique duas vezes para adicionar URL do YouTube</span>
-        </HTMLContainer>
-      );
-    }
-
-    if (!videoId) {
-      return (
-        <HTMLContainer style={{
-          width: shape.props.w, height: shape.props.h,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "hsl(0,0%,10%)", borderRadius: 12, border: "2px solid hsl(0,84%,60%)",
-          color: "hsl(0,70%,65%)", fontSize: 14, position: "relative", pointerEvents: "all", overflow: "visible",
-        }}>
-          <SourceDot shapeId={shape.id} shapeType="youtube" />
-          URL inválida do YouTube
-        </HTMLContainer>
-      );
-    }
-
-    return (
-      <HTMLContainer style={{
-        width: shape.props.w, height: shape.props.h,
-        borderRadius: 12, overflow: "visible", pointerEvents: "all", position: "relative",
-      }}>
-        <div style={{
-          width: "100%", height: "100%", borderRadius: 12, overflow: "hidden",
-        }}>
-          <iframe
-            src={`https://www.youtube.com/embed/${videoId}`}
-            width="100%" height="100%"
-            style={{ border: "none" }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-        <SourceDot shapeId={shape.id} shapeType="youtube" />
-      </HTMLContainer>
-    );
+    return <YouTubeComponent shape={shape} />;
   }
 
   indicator(shape: YouTubeShape) {
@@ -196,11 +146,134 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
   }
 
   override onDoubleClick = (shape: YouTubeShape) => {
-    const url = window.prompt("Cole a URL do YouTube:", shape.props.url);
-    if (url !== null) {
-      this.editor.updateShape<YouTubeShape>({
-        id: shape.id, type: "youtube", props: { url },
-      });
-    }
+    // Handled inline now
   };
+}
+
+function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
+  const editor = useEditor();
+  const [showUrlInput, setShowUrlInput] = useState(!shape.props.url);
+  const [urlValue, setUrlValue] = useState(shape.props.url || "");
+  const videoId = getYouTubeId(shape.props.url);
+
+  const handleSubmit = useCallback(() => {
+    editor.updateShape({ id: shape.id, type: "youtube", props: { url: urlValue.trim() } });
+    if (urlValue.trim()) setShowUrlInput(false);
+  }, [editor, shape.id, urlValue]);
+
+  // Empty state or editing
+  if (!videoId || showUrlInput) {
+    return (
+      <HTMLContainer style={{
+        width: shape.props.w, height: shape.props.h,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "hsl(0,0%,10%)", borderRadius: 12, border: "1px solid hsl(0,0%,20%)",
+        color: "hsl(0,0%,50%)", fontSize: 14, flexDirection: "column", gap: 12,
+        pointerEvents: "all", position: "relative", overflow: "visible",
+      }}>
+        <SourceDot shapeId={shape.id} shapeType="youtube" />
+        <span style={{ fontSize: 32 }}>🎬</span>
+        <div
+          style={{
+            background: "hsl(0,0%,7%)",
+            border: "1px solid hsl(0,0%,22%)",
+            borderRadius: 10,
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            width: "85%",
+            maxWidth: 340,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <span style={{ fontSize: 12, color: "hsl(0,0%,60%)", fontWeight: 500 }}>
+            Cole a URL do YouTube
+          </span>
+          <input
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Escape") { setShowUrlInput(false); setUrlValue(shape.props.url || ""); }
+            }}
+            placeholder="https://youtube.com/watch?v=..."
+            autoFocus
+            style={{
+              width: "100%",
+              background: "hsl(0,0%,12%)",
+              border: "1px solid hsl(0,0%,25%)",
+              borderRadius: 6,
+              padding: "8px 10px",
+              color: "hsl(0,0%,90%)",
+              fontSize: 12,
+              outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+            {shape.props.url && (
+              <button
+                onClick={() => { setShowUrlInput(false); setUrlValue(shape.props.url); }}
+                style={{
+                  background: "hsl(0,0%,15%)", border: "1px solid hsl(0,0%,25%)",
+                  borderRadius: 6, padding: "5px 14px", color: "hsl(0,0%,60%)",
+                  fontSize: 11, cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={!urlValue.trim()}
+              style={{
+                background: urlValue.trim() ? "hsl(0,0%,30%)" : "hsl(0,0%,15%)",
+                border: "none", borderRadius: 6, padding: "5px 14px",
+                color: urlValue.trim() ? "hsl(0,0%,95%)" : "hsl(0,0%,40%)",
+                fontSize: 11, cursor: urlValue.trim() ? "pointer" : "not-allowed",
+                fontWeight: 500,
+              }}
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </HTMLContainer>
+    );
+  }
+
+  return (
+    <HTMLContainer style={{
+      width: shape.props.w, height: shape.props.h,
+      borderRadius: 12, overflow: "visible", pointerEvents: "all", position: "relative",
+    }}>
+      <div
+        style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative" }}
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          width="100%" height="100%"
+          style={{ border: "none" }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+        {/* Edit button overlay */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowUrlInput(true); setUrlValue(shape.props.url); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute", top: 8, right: 8,
+            background: "hsla(0,0%,7%,0.85)", border: "1px solid hsl(0,0%,25%)",
+            borderRadius: 6, padding: "4px 8px", color: "hsl(0,0%,70%)",
+            fontSize: 11, cursor: "pointer", backdropFilter: "blur(4px)",
+          }}
+        >
+          ✏️ Editar URL
+        </button>
+      </div>
+      <SourceDot shapeId={shape.id} shapeType="youtube" />
+    </HTMLContainer>
+  );
 }
