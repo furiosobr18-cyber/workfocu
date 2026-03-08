@@ -103,7 +103,7 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
 
   const isDragging = linkingFrom && dragStartPos && mousePos;
 
-  if (lines.length === 0 && !isDragging) return null;
+  // Always render SVG so svgRef is available for coordinate conversion
 
   return (
     <svg
