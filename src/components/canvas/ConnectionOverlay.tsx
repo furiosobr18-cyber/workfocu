@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Editor } from "tldraw";
 import { useConnections } from "./ConnectionContext";
 
@@ -15,6 +15,14 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
   const [lines, setLines] = useState<LinePos[]>([]);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Get the offset of the SVG container to convert screen coords to local coords
+  const toLocal = useCallback((screenX: number, screenY: number) => {
+    if (!svgRef.current) return { x: screenX, y: screenY };
+    const rect = svgRef.current.getBoundingClientRect();
+    return { x: screenX - rect.left, y: screenY - rect.top };
+  }, []);
 
   // Track mouse while dragging a wire
   useEffect(() => {
@@ -25,12 +33,13 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
     }
 
     const onMove = (e: PointerEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
+      const local = toLocal(e.clientX, e.clientY);
+      setMousePos(local);
     };
 
     document.addEventListener("pointermove", onMove);
     return () => document.removeEventListener("pointermove", onMove);
-  }, [linkingFrom]);
+  }, [linkingFrom, toLocal]);
 
   // Find the source dot screen position when linking starts
   useEffect(() => {
@@ -48,8 +57,8 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
       x: bounds.x + bounds.w,
       y: bounds.y + bounds.h / 2,
     });
-    setDragStartPos(screenPos);
-  }, [linkingFrom, editor]);
+    setDragStartPos(toLocal(screenPos.x, screenPos.y));
+  }, [linkingFrom, editor, toLocal]);
 
   // Update existing connection lines
   useEffect(() => {
@@ -72,7 +81,10 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
         const s = editor.pageToScreen({ x: sB.x + sB.w, y: sB.y + sB.h / 2 });
         const t = editor.pageToScreen({ x: tB.x, y: tB.y + tB.h / 2 });
 
-        newLines.push({ id: conn.id, x1: s.x, y1: s.y, x2: t.x, y2: t.y });
+        const sLocal = toLocal(s.x, s.y);
+        const tLocal = toLocal(t.x, t.y);
+
+        newLines.push({ id: conn.id, x1: sLocal.x, y1: sLocal.y, x2: tLocal.x, y2: tLocal.y });
       }
       setLines(newLines);
     };
@@ -80,7 +92,7 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
     update();
     const interval = setInterval(update, 50);
     return () => clearInterval(interval);
-  }, [editor, connections]);
+  }, [editor, connections, toLocal]);
 
   const isDragging = linkingFrom && dragStartPos && mousePos;
 
@@ -88,6 +100,7 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
 
   return (
     <svg
+      ref={svgRef}
       style={{
         position: "absolute",
         inset: 0,
