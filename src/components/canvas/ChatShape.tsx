@@ -241,6 +241,20 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span>🤖</span> Chat IA
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMemory(!showMemory); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              title="Memória"
+              style={{
+                background: memory.trim() ? "#6a3aff44" : "#2a2a45",
+                border: memory.trim() ? "1px solid #6a3aff" : "1px solid #3a3a55",
+                borderRadius: 6, padding: "2px 6px", fontSize: 11, cursor: "pointer",
+                color: memory.trim() ? "#c0a0ff" : "#8080a0",
+                display: "flex", alignItems: "center", gap: 3,
+              }}
+            >
+              🧠 {memory.trim() ? "Memória ✓" : "Memória"}
+            </button>
             {connections.length > 0 && (
               <span
                 style={{
