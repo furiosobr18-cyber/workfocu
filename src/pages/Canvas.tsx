@@ -47,7 +47,7 @@ function CanvasInner() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
-  const { startLinking, completeLinking, linkingFrom, cancelLinking } = useConnections();
+  const { startLinking, completeLinking, linkingFrom, cancelLinking, setCurrentPageId } = useConnections();
 
   useEffect(() => {
     if (!loading && !user) navigate("/");
@@ -56,6 +56,19 @@ function CanvasInner() {
   const handleMount = useCallback((editor: Editor) => {
     setEditor(editor);
   }, []);
+
+  // Sync current tldraw page to connection context
+  useEffect(() => {
+    if (!editor) return;
+    const updatePage = () => {
+      const pageId = editor.getCurrentPageId();
+      setCurrentPageId(pageId);
+    };
+    updatePage();
+    // Poll for page changes (tldraw doesn't expose a simple page-change event)
+    const interval = setInterval(updatePage, 500);
+    return () => clearInterval(interval);
+  }, [editor, setCurrentPageId]);
 
   // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
   useEffect(() => {

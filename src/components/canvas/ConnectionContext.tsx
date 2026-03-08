@@ -2,9 +2,10 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 
 export interface CanvasConnection {
   id: string;
-  sourceId: string; // YouTube/Image/File shape ID
+  sourceId: string;
   sourceType: string;
-  targetId: string; // Chat shape ID
+  targetId: string;
+  pageId: string;
 }
 
 interface ConnectionContextType {
@@ -15,6 +16,8 @@ interface ConnectionContextType {
   cancelLinking: () => void;
   removeConnection: (connectionId: string) => void;
   getConnectionsForChat: (chatId: string) => CanvasConnection[];
+  currentPageId: string;
+  setCurrentPageId: (pageId: string) => void;
 }
 
 const ConnectionContext = createContext<ConnectionContextType | null>(null);
@@ -26,8 +29,12 @@ export function useConnections() {
 }
 
 export function ConnectionProvider({ children }: { children: React.ReactNode }) {
-  const [connections, setConnections] = useState<CanvasConnection[]>([]);
+  const [allConnections, setAllConnections] = useState<CanvasConnection[]>([]);
   const [linkingFrom, setLinkingFrom] = useState<{ id: string; type: string } | null>(null);
+  const [currentPageId, setCurrentPageId] = useState<string>("page:page");
+
+  // Only show connections for the current page
+  const connections = allConnections.filter((c) => c.pageId === currentPageId);
 
   const startLinking = useCallback((sourceId: string, sourceType: string) => {
     setLinkingFrom({ id: sourceId, type: sourceType });
@@ -35,30 +42,30 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
 
   const completeLinking = useCallback((targetId: string) => {
     if (!linkingFrom) return;
-    // Don't duplicate
-    const exists = connections.some(
-      (c) => c.sourceId === linkingFrom.id && c.targetId === targetId
+    const exists = allConnections.some(
+      (c) => c.sourceId === linkingFrom.id && c.targetId === targetId && c.pageId === currentPageId
     );
     if (!exists) {
-      setConnections((prev) => [
+      setAllConnections((prev) => [
         ...prev,
         {
           id: `${linkingFrom.id}-${targetId}`,
           sourceId: linkingFrom.id,
           sourceType: linkingFrom.type,
           targetId,
+          pageId: currentPageId,
         },
       ]);
     }
     setLinkingFrom(null);
-  }, [linkingFrom, connections]);
+  }, [linkingFrom, allConnections, currentPageId]);
 
   const cancelLinking = useCallback(() => {
     setLinkingFrom(null);
   }, []);
 
   const removeConnection = useCallback((connectionId: string) => {
-    setConnections((prev) => prev.filter((c) => c.id !== connectionId));
+    setAllConnections((prev) => prev.filter((c) => c.id !== connectionId));
   }, []);
 
   const getConnectionsForChat = useCallback(
@@ -76,6 +83,8 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
         cancelLinking,
         removeConnection,
         getConnectionsForChat,
+        currentPageId,
+        setCurrentPageId,
       }}
     >
       {children}

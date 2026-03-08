@@ -11,7 +11,7 @@ interface LinePos {
 }
 
 export default function ConnectionOverlay({ editor }: { editor: Editor | null }) {
-  const { connections, linkingFrom } = useConnections();
+  const { connections, linkingFrom, removeConnection } = useConnections();
   const [lines, setLines] = useState<LinePos[]>([]);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
@@ -163,6 +163,10 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
         const cpOffset = Math.max(Math.abs(dx) * 0.4, 60);
         const path = `M ${line.x1} ${line.y1} C ${line.x1 + cpOffset} ${line.y1}, ${line.x2 - cpOffset} ${line.y2}, ${line.x2} ${line.y2}`;
 
+        // Midpoint of the bezier curve (approximate)
+        const mx = (line.x1 + line.x2) / 2;
+        const my = (line.y1 + line.y2) / 2;
+
         return (
           <g key={line.id}>
             {/* Glow */}
@@ -197,6 +201,16 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
             {/* Endpoint dots */}
             <circle cx={line.x1} cy={line.y1} r={7} fill="#4af" stroke="#fff" strokeWidth={2} />
             <circle cx={line.x2} cy={line.y2} r={7} fill="#a040ff" stroke="#fff" strokeWidth={2} />
+
+            {/* Delete button at midpoint */}
+            <g
+              style={{ cursor: "pointer", pointerEvents: "all" }}
+              onClick={() => removeConnection(line.id)}
+            >
+              <circle cx={mx} cy={my} r={10} fill="#1a1a2e" stroke="#ff4466" strokeWidth={1.5} opacity={0.9} />
+              <line x1={mx - 4} y1={my - 4} x2={mx + 4} y2={my + 4} stroke="#ff4466" strokeWidth={2} strokeLinecap="round" />
+              <line x1={mx + 4} y1={my - 4} x2={mx - 4} y2={my + 4} stroke="#ff4466" strokeWidth={2} strokeLinecap="round" />
+            </g>
           </g>
         );
       })}
