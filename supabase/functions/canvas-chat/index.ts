@@ -22,7 +22,6 @@ const corsHeaders = {
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 const MULTIMODAL_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
 const allowedModels = [
-  "allam-2-7b-instruct",
   "deepseek-r1-distill-llama-70b",
   "gemma2-9b-it",
   "llama-3.1-8b-instant",

@@ -34,7 +34,6 @@ const AI_MODELS = [
   { id: "qwen-qwq-32b", label: "Qwen QWQ 32B", emoji: "🔮" },
   { id: "gemma2-9b-it", label: "Gemma 2 9B", emoji: "💎" },
   { id: "mistral-saba-24b", label: "Mistral Saba 24B", emoji: "🌊" },
-  { id: "allam-2-7b-instruct", label: "Allam 2 7B", emoji: "🌙" },
 ];
 
 // Helper to get YouTube URL from shape
