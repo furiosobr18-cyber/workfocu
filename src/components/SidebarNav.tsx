@@ -12,6 +12,7 @@ const navItems = [
   { icon: Timer, label: "Pomodoro", path: "/pomodoro" },
   { icon: FileText, label: "Notas", path: "/notes" },
   { icon: Calendar, label: "Calendário", path: "/calendar" },
+  { icon: PenTool, label: "Canvas", path: "/canvas" },
 ];
 
 const SidebarNav = () => {
