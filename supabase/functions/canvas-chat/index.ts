@@ -157,7 +157,7 @@ serve(async (req) => {
     const { cleanedMessages, sources } = extractConnectedSources(incomingMessages);
     const { contextText, imageDataUrls } = await buildConnectedContext(sources);
 
-    let selectedModel = allowedModels.includes(model) ? model : DEFAULT_MODEL;
+    let selectedModel = allowedModels.includes(String(model)) ? String(model) : DEFAULT_MODEL;
     if (imageDataUrls.length > 0) {
       selectedModel = MULTIMODAL_MODEL;
     }
@@ -207,11 +207,17 @@ serve(async (req) => {
       messages: payloadMessages,
     });
 
-    if (!response.ok && response.status === 400) {
+    if (!response.ok && (response.status === 400 || response.status === 404)) {
       const bodyText = await response.text();
       const lower = bodyText.toLowerCase();
 
-      if ((lower.includes("decommissioned") || lower.includes("not supported")) && selectedModel !== DEFAULT_MODEL) {
+      if (
+        (lower.includes("decommissioned") ||
+          lower.includes("not supported") ||
+          lower.includes("model_not_found") ||
+          lower.includes("does not exist")) &&
+        selectedModel !== DEFAULT_MODEL
+      ) {
         response = await callGroq({
           apiKey: GROQ_API_KEY,
           model: DEFAULT_MODEL,
