@@ -138,29 +138,24 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         pointerEvents: "all",
       }}
     >
-      {/* Connection dots */}
-      {[
-        { top: "50%", left: -6, transform: "translateY(-50%)" },
-        { top: "50%", right: -6, transform: "translateY(-50%)", left: "auto" },
-        { top: -6, left: "50%", transform: "translateX(-50%)" },
-        { bottom: -6, left: "50%", transform: "translateX(-50%)", top: "auto" },
-      ].map((pos, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            ...pos,
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: "#a040ff",
-            border: "2px solid #fff",
-            boxShadow: "0 0 6px rgba(160,64,255,0.6)",
-            cursor: "crosshair",
-            zIndex: 10,
-          } as React.CSSProperties}
-        />
-      ))}
+      {/* Connection dot - right side */}
+      <div
+        style={{
+          position: "absolute",
+          right: -7,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: "#ffffff",
+          border: "2px solid #888",
+          boxShadow: "0 0 8px rgba(255,255,255,0.4)",
+          cursor: "crosshair",
+          zIndex: 10,
+        }}
+        title="Conecte ao YouTube"
+      />
       <div
         style={{
           width: "100%",

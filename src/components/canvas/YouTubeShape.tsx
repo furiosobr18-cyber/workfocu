@@ -121,71 +121,23 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />
-        {/* Connection indicators */}
+        {/* Connection dot - left side */}
         <div
           style={{
             position: "absolute",
-            right: -6,
+            left: -7,
             top: "50%",
             transform: "translateY(-50%)",
-            width: 12,
-            height: 12,
+            width: 14,
+            height: 14,
             borderRadius: "50%",
-            background: "#4a4aff",
-            border: "2px solid #fff",
-            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
+            background: "#ffffff",
+            border: "2px solid #888",
+            boxShadow: "0 0 8px rgba(255,255,255,0.4)",
             cursor: "crosshair",
             zIndex: 10,
           }}
-          title="Arraste uma seta daqui para o Chat"
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: -6,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: "#4a4aff",
-            border: "2px solid #fff",
-            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
-            cursor: "crosshair",
-            zIndex: 10,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: -6,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: "#4a4aff",
-            border: "2px solid #fff",
-            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
-            cursor: "crosshair",
-            zIndex: 10,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: -6,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: "#4a4aff",
-            border: "2px solid #fff",
-            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
-            cursor: "crosshair",
-            zIndex: 10,
-          }}
+          title="Conecte ao Chat"
         />
       </HTMLContainer>
     );
