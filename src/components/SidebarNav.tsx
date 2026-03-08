@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Sun, Moon, LogOut } from "lucide-react";
+import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Eye, Brain, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,11 @@ const navItems = [
   { icon: FileText, label: "Notas", path: "/notes" },
   { icon: Calendar, label: "Calendário", path: "/calendar" },
   { icon: PenTool, label: "Canvas", path: "/canvas" },
+];
+
+const dgItems = [
+  { icon: Eye, label: "Accountability Mirror", path: "/accountability-mirror" },
+  { icon: Brain, label: "The 40% Rule", path: "/forty-percent-rule" },
 ];
 
 const SidebarNav = () => {
@@ -56,7 +61,7 @@ const SidebarNav = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => (
             <li key={item.path}>
@@ -73,6 +78,29 @@ const SidebarNav = () => {
             </li>
           ))}
         </ul>
+
+        {/* DG Section */}
+        <div className="mt-5 pt-4 border-t border-sidebar-border">
+          <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            DG
+          </span>
+          <ul className="mt-2 space-y-1">
+            {dgItems.map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={cn(
+                    "sidebar-link",
+                    location.pathname === item.path && "sidebar-link-active"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-xs">{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </nav>
 
       {/* Bottom Section */}
