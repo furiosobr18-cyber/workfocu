@@ -45,6 +45,10 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
     return true;
   }
 
+  override canBind() {
+    return true;
+  }
+
   override onResize(shape: YouTubeShape, info: TLResizeInfo<YouTubeShape>) {
     return resizeBox(shape, info);
   }
@@ -106,6 +110,7 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
           borderRadius: 12,
           overflow: "hidden",
           pointerEvents: "all",
+          position: "relative",
         }}
       >
         <iframe
@@ -115,6 +120,72 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
           style={{ border: "none" }}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
+        />
+        {/* Connection indicators */}
+        <div
+          style={{
+            position: "absolute",
+            right: -6,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#4a4aff",
+            border: "2px solid #fff",
+            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
+            cursor: "crosshair",
+            zIndex: 10,
+          }}
+          title="Arraste uma seta daqui para o Chat"
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: -6,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#4a4aff",
+            border: "2px solid #fff",
+            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
+            cursor: "crosshair",
+            zIndex: 10,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: -6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#4a4aff",
+            border: "2px solid #fff",
+            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
+            cursor: "crosshair",
+            zIndex: 10,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: -6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#4a4aff",
+            border: "2px solid #fff",
+            boxShadow: "0 0 6px rgba(74,74,255,0.6)",
+            cursor: "crosshair",
+            zIndex: 10,
+          }}
         />
       </HTMLContainer>
     );

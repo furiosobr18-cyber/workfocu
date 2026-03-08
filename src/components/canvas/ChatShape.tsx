@@ -134,15 +134,45 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
       style={{
         width: shape.props.w,
         height: shape.props.h,
-        display: "flex",
-        flexDirection: "column",
-        background: "#12121f",
-        borderRadius: 12,
-        border: "1px solid #2a2a40",
-        overflow: "hidden",
+        position: "relative",
         pointerEvents: "all",
       }}
     >
+      {/* Connection dots */}
+      {[
+        { top: "50%", left: -6, transform: "translateY(-50%)" },
+        { top: "50%", right: -6, transform: "translateY(-50%)", left: "auto" },
+        { top: -6, left: "50%", transform: "translateX(-50%)" },
+        { bottom: -6, left: "50%", transform: "translateX(-50%)", top: "auto" },
+      ].map((pos, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            ...pos,
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#a040ff",
+            border: "2px solid #fff",
+            boxShadow: "0 0 6px rgba(160,64,255,0.6)",
+            cursor: "crosshair",
+            zIndex: 10,
+          } as React.CSSProperties}
+        />
+      ))}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          background: "#12121f",
+          borderRadius: 12,
+          border: "1px solid #2a2a40",
+          overflow: "hidden",
+        }}
+      >
       {/* Header with model picker */}
       <div
         style={{
@@ -321,6 +351,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           ➤
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -343,6 +374,10 @@ export class ChatShapeUtil extends BaseBoxShapeUtil<ChatShape> {
   }
 
   override canResize() {
+    return true;
+  }
+
+  override canBind() {
     return true;
   }
 
