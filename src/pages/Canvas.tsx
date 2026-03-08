@@ -59,6 +59,8 @@ function CanvasInner() {
 
   // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
   useEffect(() => {
+    let justStartedLinking = false;
+
     const handleDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
 
@@ -69,14 +71,25 @@ function CanvasInner() {
         e.stopPropagation();
         e.preventDefault();
         startLinking(sourceId, sourceType);
+        justStartedLinking = true;
+        // Reset flag after a tick so the immediate pointerup is ignored
+        requestAnimationFrame(() => {
+          justStartedLinking = false;
+        });
         return;
       }
     };
 
     const handleUp = (e: PointerEvent) => {
       if (!linkingFrom) return;
+      // Ignore the pointerup that fires right after pointerdown on the source dot
+      if (justStartedLinking) return;
 
       const target = e.target as HTMLElement;
+
+      // Also ignore if releasing on a source dot (user just finished pressing it)
+      if (target.getAttribute("data-connection-source")) return;
+
       const targetId = target.getAttribute("data-connection-target");
       if (targetId) {
         e.stopPropagation();
