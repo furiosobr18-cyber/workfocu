@@ -54,6 +54,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [memory, setMemory] = useState(shape.props.memory || "");
+  const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const connections = getConnectionsForChat(shape.id);
