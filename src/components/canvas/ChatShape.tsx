@@ -256,9 +256,9 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "#12121f",
+          background: "hsl(0,0%,7%)",
           borderRadius: 12,
-          border: linkingFrom ? "2px solid #a040ff" : "1px solid #2a2a40",
+          border: linkingFrom ? "2px solid hsl(0,0%,50%)" : "1px solid hsl(0,0%,20%)",
           overflow: "hidden",
         }}
       >
@@ -266,14 +266,14 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         <div
           style={{
             padding: "6px 10px",
-            background: "#1a1a30",
-            borderBottom: "1px solid #2a2a40",
+            background: "hsl(0,0%,10%)",
+            borderBottom: "1px solid hsl(0,0%,20%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             fontSize: 13,
             fontWeight: 600,
-            color: "#a0a0ff",
+            color: "hsl(0,0%,75%)",
             position: "relative",
           }}
         >
@@ -284,10 +284,10 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
               onPointerDown={(e) => e.stopPropagation()}
               title="Memória"
               style={{
-                background: memory.trim() ? "#6a3aff44" : "#2a2a45",
-                border: memory.trim() ? "1px solid #6a3aff" : "1px solid #3a3a55",
+                background: memory.trim() ? "hsla(0,0%,40%,0.3)" : "hsl(0,0%,15%)",
+                border: memory.trim() ? "1px solid hsl(0,0%,50%)" : "1px solid hsl(0,0%,25%)",
                 borderRadius: 6, padding: "2px 6px", fontSize: 11, cursor: "pointer",
-                color: memory.trim() ? "#c0a0ff" : "#8080a0",
+                color: memory.trim() ? "hsl(0,0%,80%)" : "hsl(0,0%,50%)",
                 display: "flex", alignItems: "center", gap: 3,
               }}
             >
@@ -296,11 +296,11 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             {connections.length > 0 && (
               <span
                 style={{
-                  background: "#3a3a60",
+                  background: "hsl(0,0%,18%)",
                   borderRadius: 10,
                   padding: "1px 6px",
                   fontSize: 10,
-                  color: "#8080ff",
+                  color: "hsl(0,0%,60%)",
                 }}
               >
                 {connections.length} conectado{connections.length > 1 ? "s" : ""}
@@ -311,8 +311,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             onClick={(e) => { e.stopPropagation(); setShowModelPicker(!showModelPicker); }}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
-              background: "#2a2a45", border: "1px solid #3a3a55", borderRadius: 6,
-              padding: "3px 8px", color: "#c0c0ff", fontSize: 11, cursor: "pointer",
+              background: "hsl(0,0%,15%)", border: "1px solid hsl(0,0%,25%)", borderRadius: 6,
+              padding: "3px 8px", color: "hsl(0,0%,70%)", fontSize: 11, cursor: "pointer",
               display: "flex", alignItems: "center", gap: 4,
             }}
           >
@@ -323,7 +323,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             <div
               style={{
                 position: "absolute", top: "100%", right: 4, zIndex: 999,
-                background: "#1e1e35", border: "1px solid #3a3a55", borderRadius: 8,
+                background: "hsl(0,0%,12%)", border: "1px solid hsl(0,0%,25%)", borderRadius: 8,
                 padding: 4, minWidth: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
               }}
               onPointerDown={(e) => e.stopPropagation()}
@@ -335,8 +335,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                   style={{
                     display: "flex", alignItems: "center", gap: 8, width: "100%",
                     padding: "6px 10px", border: "none", borderRadius: 6,
-                    background: selectedModel === model.id ? "#3a3a60" : "transparent",
-                    color: selectedModel === model.id ? "#e0e0ff" : "#a0a0c0",
+                    background: selectedModel === model.id ? "hsl(0,0%,20%)" : "transparent",
+                    color: selectedModel === model.id ? "hsl(0,0%,90%)" : "hsl(0,0%,60%)",
                     fontSize: 12, cursor: "pointer", textAlign: "left",
                   }}
                 >
@@ -354,16 +354,16 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           <div
             style={{
               padding: "8px 10px",
-              background: "#18182e",
-              borderBottom: "1px solid #2a2a40",
+              background: "hsl(0,0%,9%)",
+              borderBottom: "1px solid hsl(0,0%,20%)",
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div style={{ fontSize: 11, color: "#8080c0", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 11, color: "hsl(0,0%,55%)", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>🧠 Memória (instruções persistentes)</span>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMemory(false); }}
-                style={{ background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 14 }}
+                style={{ background: "none", border: "none", color: "hsl(0,0%,45%)", cursor: "pointer", fontSize: 14 }}
               >✕</button>
             </div>
             <textarea
@@ -373,12 +373,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
               placeholder="Ex: Sempre responda em português. Seja objetivo. Foque em código React..."
               style={{
                 width: "100%", minHeight: 60, maxHeight: 120, resize: "vertical",
-                background: "#12121f", border: "1px solid #3a3a55", borderRadius: 6,
-                padding: "6px 8px", color: "#d0d0ff", fontSize: 11, outline: "none",
+                background: "hsl(0,0%,7%)", border: "1px solid hsl(0,0%,25%)", borderRadius: 6,
+                padding: "6px 8px", color: "hsl(0,0%,80%)", fontSize: 11, outline: "none",
                 fontFamily: "inherit", lineHeight: 1.4,
               }}
             />
-            <div style={{ fontSize: 10, color: "#5050a0", marginTop: 3 }}>
+            <div style={{ fontSize: 10, color: "hsl(0,0%,40%)", marginTop: 3 }}>
               Essa memória será enviada em todas as mensagens como contexto.
             </div>
           </div>
@@ -388,8 +388,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           <div
             style={{
               padding: "4px 10px",
-              background: "#15152a",
-              borderBottom: "1px solid #2a2a40",
+              background: "hsl(0,0%,8%)",
+              borderBottom: "1px solid hsl(0,0%,20%)",
               display: "flex",
               gap: 4,
               flexWrap: "wrap",
@@ -405,11 +405,11 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                 <span
                   key={conn.id}
                   style={{
-                    background: "#2a2a45",
+                    background: "hsl(0,0%,15%)",
                     borderRadius: 6,
                     padding: "2px 6px",
                     fontSize: 10,
-                    color: "#80c0ff",
+                    color: "hsl(0,0%,60%)",
                     display: "flex",
                     alignItems: "center",
                     gap: 3,
@@ -428,12 +428,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           style={{ flex: 1, overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 6 }}
         >
           {messages.length === 0 && (
-            <div style={{ color: "#555", fontSize: 12, textAlign: "center", marginTop: 20 }}>
+            <div style={{ color: "hsl(0,0%,35%)", fontSize: 12, textAlign: "center", marginTop: 20 }}>
               Usando {currentModel.emoji} {currentModel.label}
               {connections.length > 0 && (
                 <>
                   <br />
-                  <span style={{ color: "#4af", fontSize: 11 }}>
+                  <span style={{ color: "hsl(0,0%,55%)", fontSize: 11 }}>
                     ✨ {connections.length} fonte{connections.length > 1 ? "s" : ""} conectada{connections.length > 1 ? "s" : ""}
                   </span>
                 </>
@@ -449,9 +449,9 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                 alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
                 maxWidth: "85%", padding: "6px 10px", borderRadius: 8,
                 fontSize: 12, lineHeight: 1.4,
-                background: msg.role === "user" ? "#3a3aff33" : "#22223a",
-                color: "#e0e0e0",
-                border: msg.role === "user" ? "1px solid #3a3aff55" : "1px solid #2a2a40",
+                background: msg.role === "user" ? "hsla(0,0%,30%,0.3)" : "hsl(0,0%,12%)",
+                color: "hsl(0,0%,88%)",
+                border: msg.role === "user" ? "1px solid hsl(0,0%,30%)" : "1px solid hsl(0,0%,20%)",
               }}
             >
               {msg.role === "assistant" ? (
@@ -462,12 +462,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             </div>
           ))}
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-            <div style={{ color: "#666", fontSize: 12, padding: "4px 8px" }}>Pensando...</div>
+            <div style={{ color: "hsl(0,0%,40%)", fontSize: 12, padding: "4px 8px" }}>Pensando...</div>
           )}
         </div>
 
         {/* Input */}
-        <div style={{ padding: 8, borderTop: "1px solid #2a2a40", display: "flex", gap: 6 }}>
+        <div style={{ padding: 8, borderTop: "1px solid hsl(0,0%,20%)", display: "flex", gap: 6 }}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -478,8 +478,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             onPointerDown={(e) => e.stopPropagation()}
             placeholder={connections.length > 0 ? "Pergunte sobre o conteúdo conectado..." : "Digite sua mensagem..."}
             style={{
-              flex: 1, background: "#1a1a2e", border: "1px solid #333",
-              borderRadius: 6, padding: "6px 10px", color: "#e0e0e0",
+              flex: 1, background: "hsl(0,0%,10%)", border: "1px solid hsl(0,0%,22%)",
+              borderRadius: 6, padding: "6px 10px", color: "hsl(0,0%,88%)",
               fontSize: 12, outline: "none",
             }}
           />
@@ -487,8 +487,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             onClick={sendMessage}
             disabled={isLoading || !input.trim()}
             style={{
-              background: isLoading || !input.trim() ? "#333" : "#4a4aff",
-              color: "#fff", border: "none", borderRadius: 6,
+              background: isLoading || !input.trim() ? "hsl(0,0%,18%)" : "hsl(0,0%,30%)",
+              color: "hsl(0,0%,90%)", border: "none", borderRadius: 6,
               padding: "6px 12px", fontSize: 12,
               cursor: isLoading || !input.trim() ? "not-allowed" : "pointer",
             }}
