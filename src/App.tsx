@@ -13,8 +13,7 @@ import Tasks from "./pages/Tasks";
 import Notes from "./pages/Notes";
 import CalendarPage from "./pages/CalendarPage";
 import Canvas from "./pages/Canvas";
-import AccountabilityMirror from "./pages/AccountabilityMirror";
-import FortyPercentRule from "./pages/FortyPercentRule";
+import DG from "./pages/DG";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,8 +35,7 @@ const App = () => (
           <Route path="/notes" element={<Notes />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/canvas" element={<Canvas />} />
-          <Route path="/accountability-mirror" element={<AccountabilityMirror />} />
-          <Route path="/forty-percent-rule" element={<FortyPercentRule />} />
+          <Route path="/dg" element={<DG />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
