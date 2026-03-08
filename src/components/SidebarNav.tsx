@@ -15,6 +15,11 @@ const navItems = [
   { icon: PenTool, label: "Canvas", path: "/canvas" },
 ];
 
+const dgItems = [
+  { icon: Eye, label: "Accountability Mirror", path: "/accountability-mirror" },
+  { icon: Brain, label: "The 40% Rule", path: "/forty-percent-rule" },
+];
+
 const SidebarNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
