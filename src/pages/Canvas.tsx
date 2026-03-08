@@ -163,7 +163,7 @@ function CanvasInner() {
         {linkingFrom && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-purple-600/90 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in">
             <span className="animate-pulse">🔗</span>
-            Clique na bolinha roxa do Chat para conectar
+            Arraste até a bolinha roxa do Chat para conectar
             <button
               onClick={cancelLinking}
               className="ml-2 bg-white/20 hover:bg-white/30 rounded px-2 py-0.5 text-xs"
