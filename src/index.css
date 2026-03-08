@@ -106,6 +106,50 @@
   }
 }
 
+/* tldraw dark overrides */
+.tl-background {
+  background-color: hsl(0 0% 7%) !important;
+}
+
+.tlui-layout {
+  --color-background: hsl(0 0% 7%);
+}
+
+.tlui-toolbar,
+.tlui-toolbar__extras,
+.tlui-style-panel,
+.tlui-page-menu,
+.tlui-menu,
+.tlui-popover,
+.tlui-dialog {
+  background: hsl(0 0% 12%) !important;
+  border-color: hsl(0 0% 20%) !important;
+  color: hsl(0 0% 90%) !important;
+}
+
+.tlui-button {
+  color: hsl(0 0% 80%) !important;
+}
+
+.tlui-button:hover,
+.tlui-button[data-state="hinted"] {
+  background: hsl(0 0% 18%) !important;
+  color: hsl(0 0% 98%) !important;
+}
+
+.tlui-button[aria-checked="true"],
+.tlui-button[data-isactive="true"] {
+  background: hsl(0 0% 22%) !important;
+  color: hsl(0 0% 98%) !important;
+}
+
+.tlui-navigation-zone,
+.tlui-help-menu,
+.tlui-debug-panel {
+  background: hsl(0 0% 12%) !important;
+  border-color: hsl(0 0% 20%) !important;
+}
+
 @layer components {
   .auth-card {
     @apply bg-card border border-border rounded-xl shadow-sm;
