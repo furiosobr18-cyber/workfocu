@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, Sun, Moon, LogOut } from "lucide-react";
+import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ const navItems = [
   { icon: Timer, label: "Pomodoro", path: "/pomodoro" },
   { icon: FileText, label: "Notas", path: "/notes" },
   { icon: Calendar, label: "Calendário", path: "/calendar" },
+  { icon: PenTool, label: "Canvas", path: "/canvas" },
 ];
 
 const SidebarNav = () => {

@@ -12,6 +12,7 @@ import Pomodoro from "./pages/Pomodoro";
 import Tasks from "./pages/Tasks";
 import Notes from "./pages/Notes";
 import CalendarPage from "./pages/CalendarPage";
+import Canvas from "./pages/Canvas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/canvas" element={<Canvas />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
