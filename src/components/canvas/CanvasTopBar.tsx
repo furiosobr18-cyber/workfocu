@@ -128,45 +128,9 @@ const CanvasTopBar = ({ editor }: CanvasTopBarProps) => {
         )}
       </div>
 
-      {/* Texto button */}
-      <button
-        onClick={addTextShape}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-      >
-        <Type className="w-4 h-4" />
-        Texto
-      </button>
-
-      {/* Inserir button */}
-      <div className="relative">
-        <button
-          onClick={() => setOpenMenu(openMenu === "insert" ? null : "insert")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            openMenu === "insert"
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-          }`}
-        >
-          Inserir
-        </button>
-
-        {openMenu === "insert" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-xl py-1.5 shadow-2xl animate-fade-in">
-            {insertItems.map((item, i) => (
-              <button
-                key={i}
-                onClick={item.action}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-accent/50 transition-colors"
-              >
-                <item.icon className="w-4 h-4 text-muted-foreground" />
-                <span className="flex-1 text-left">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
+};
 };
 
 export default CanvasTopBar;
