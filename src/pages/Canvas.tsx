@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tldraw, Editor } from "tldraw";
+import { Tldraw, Editor, TldrawUiMenuItem, DefaultToolbar, useIsToolSelected, useTools } from "tldraw";
 import "tldraw/tldraw.css";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
@@ -211,8 +211,12 @@ function CanvasInner() {
           </div>
         )}
 
-        <div className="absolute inset-0">
-          <Tldraw shapeUtils={customShapeUtils} onMount={handleMount} />
+        <div className="absolute inset-0 [&_.tlui-toolbar]:hidden [&_.tlui-style-panel]:hidden">
+          <Tldraw
+            shapeUtils={customShapeUtils}
+            onMount={handleMount}
+            hideUi={false}
+          />
         </div>
         <ConnectionOverlay editor={editor} />
         <CanvasToolbar editor={editor} />
