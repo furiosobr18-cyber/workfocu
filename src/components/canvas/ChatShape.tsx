@@ -346,6 +346,10 @@ export class ChatShapeUtil extends BaseBoxShapeUtil<ChatShape> {
     return true;
   }
 
+  override canBind() {
+    return true;
+  }
+
   override onResize(shape: ChatShape, info: TLResizeInfo<ChatShape>) {
     return resizeBox(shape, info);
   }
