@@ -15,7 +15,7 @@ export type ChatShape = TLBaseShape<
   {
     w: number;
     h: number;
-    messages: string; // JSON stringified array of {role, content}
+    messages: string;
   }
 >;
 
@@ -23,7 +23,18 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canvas-chat`;
 
-function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: boolean }) {
+const AI_MODELS = [
+  { id: "google/gemini-3-flash-preview", label: "Gemini Flash", emoji: "⚡" },
+  { id: "google/gemini-2.5-pro", label: "Gemini Pro", emoji: "🧠" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", emoji: "💨" },
+  { id: "google/gemini-2.5-flash-lite", label: "Gemini Lite", emoji: "🪶" },
+  { id: "openai/gpt-5", label: "GPT-5", emoji: "🤖" },
+  { id: "openai/gpt-5-mini", label: "GPT-5 Mini", emoji: "🔹" },
+  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", emoji: "⚛️" },
+  { id: "openai/gpt-5.2", label: "GPT-5.2", emoji: "🚀" },
+];
+
+function ChatComponent({ shape }: { shape: ChatShape }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       return JSON.parse(shape.props.messages || "[]");
@@ -33,11 +44,15 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
   });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
+
+  const currentModel = AI_MODELS.find((m) => m.id === selectedModel) || AI_MODELS[0];
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -57,7 +72,7 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, model: selectedModel }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -91,15 +106,10 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
                 const last = prev[prev.length - 1];
                 if (last?.role === "assistant") {
                   return prev.map((m, i) =>
-                    i === prev.length - 1
-                      ? { ...m, content: assistantContent }
-                      : m
+                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
                   );
                 }
-                return [
-                  ...prev,
-                  { role: "assistant", content: assistantContent },
-                ];
+                return [...prev, { role: "assistant", content: assistantContent }];
               });
             }
           } catch {
@@ -112,15 +122,12 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
       console.error("Chat error:", e);
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: `❌ ${e instanceof Error ? e.message : "Erro desconhecido"}`,
-        },
+        { role: "assistant", content: `❌ ${e instanceof Error ? e.message : "Erro desconhecido"}` },
       ]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, messages, isLoading]);
+  }, [input, messages, isLoading, selectedModel]);
 
   return (
     <div
@@ -136,21 +143,93 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
         pointerEvents: "all",
       }}
     >
-      {/* Header */}
+      {/* Header with model picker */}
       <div
         style={{
-          padding: "8px 12px",
+          padding: "6px 10px",
           background: "#1a1a30",
           borderBottom: "1px solid #2a2a40",
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          justifyContent: "space-between",
           fontSize: 13,
           fontWeight: 600,
           color: "#a0a0ff",
+          position: "relative",
         }}
       >
-        <span>🤖</span> Chat IA
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span>🤖</span> Chat IA
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowModelPicker(!showModelPicker);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            background: "#2a2a45",
+            border: "1px solid #3a3a55",
+            borderRadius: 6,
+            padding: "3px 8px",
+            color: "#c0c0ff",
+            fontSize: 11,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          {currentModel.emoji} {currentModel.label} ▾
+        </button>
+
+        {/* Model dropdown */}
+        {showModelPicker && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              right: 4,
+              zIndex: 999,
+              background: "#1e1e35",
+              border: "1px solid #3a3a55",
+              borderRadius: 8,
+              padding: 4,
+              minWidth: 200,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {AI_MODELS.map((model) => (
+              <button
+                key={model.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedModel(model.id);
+                  setShowModelPicker(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  borderRadius: 6,
+                  background: selectedModel === model.id ? "#3a3a60" : "transparent",
+                  color: selectedModel === model.id ? "#e0e0ff" : "#a0a0c0",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <span>{model.emoji}</span>
+                <span style={{ flex: 1 }}>{model.label}</span>
+                {selectedModel === model.id && <span>✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -166,15 +245,10 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
         }}
       >
         {messages.length === 0 && (
-          <div
-            style={{
-              color: "#555",
-              fontSize: 12,
-              textAlign: "center",
-              marginTop: 20,
-            }}
-          >
-            Envie uma mensagem para começar
+          <div style={{ color: "#555", fontSize: 12, textAlign: "center", marginTop: 20 }}>
+            Usando {currentModel.emoji} {currentModel.label}
+            <br />
+            <span style={{ fontSize: 11 }}>Envie uma mensagem para começar</span>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -187,13 +261,9 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
               borderRadius: 8,
               fontSize: 12,
               lineHeight: 1.4,
-              background:
-                msg.role === "user" ? "#3a3aff33" : "#22223a",
+              background: msg.role === "user" ? "#3a3aff33" : "#22223a",
               color: "#e0e0e0",
-              border:
-                msg.role === "user"
-                  ? "1px solid #3a3aff55"
-                  : "1px solid #2a2a40",
+              border: msg.role === "user" ? "1px solid #3a3aff55" : "1px solid #2a2a40",
             }}
           >
             {msg.role === "assistant" ? (
@@ -206,27 +276,12 @@ function ChatComponent({ shape, isEditing }: { shape: ChatShape; isEditing: bool
           </div>
         ))}
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-          <div
-            style={{
-              color: "#666",
-              fontSize: 12,
-              padding: "4px 8px",
-            }}
-          >
-            Pensando...
-          </div>
+          <div style={{ color: "#666", fontSize: 12, padding: "4px 8px" }}>Pensando...</div>
         )}
       </div>
 
       {/* Input */}
-      <div
-        style={{
-          padding: 8,
-          borderTop: "1px solid #2a2a40",
-          display: "flex",
-          gap: 6,
-        }}
-      >
+      <div style={{ padding: 8, borderTop: "1px solid #2a2a40", display: "flex", gap: 6 }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -296,13 +351,10 @@ export class ChatShapeUtil extends BaseBoxShapeUtil<ChatShape> {
   }
 
   component(shape: ChatShape) {
-    const isEditing = this.editor.getEditingShapeId() === shape.id;
-    return <ChatComponent shape={shape} isEditing={isEditing} />;
+    return <ChatComponent shape={shape} />;
   }
 
   indicator(shape: ChatShape) {
-    return (
-      <rect width={shape.props.w} height={shape.props.h} rx={12} ry={12} />
-    );
+    return <rect width={shape.props.w} height={shape.props.h} rx={12} ry={12} />;
   }
 }
