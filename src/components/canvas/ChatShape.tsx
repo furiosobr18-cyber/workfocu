@@ -7,6 +7,7 @@ import {
   TLResizeInfo,
   resizeBox,
   RecordProps,
+  useEditor,
 } from "tldraw";
 import ReactMarkdown from "react-markdown";
 import { TargetDot } from "./YouTubeShape";
