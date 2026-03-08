@@ -53,8 +53,12 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
     const bounds = editor.getShapePageBounds(shape);
     if (!bounds) return;
 
+    // The dot is 14px outside the shape edge; account for zoom
+    const camera = editor.getCamera();
+    const dotOffset = 14 / camera.z;
+
     const screenPos = editor.pageToScreen({
-      x: bounds.x + bounds.w,
+      x: bounds.x + bounds.w + dotOffset,
       y: bounds.y + bounds.h / 2,
     });
     setDragStartPos(toLocal(screenPos.x, screenPos.y));
