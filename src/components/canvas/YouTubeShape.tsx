@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import {
   BaseBoxShapeUtil,
   HTMLContainer,
@@ -6,6 +7,7 @@ import {
   TLResizeInfo,
   resizeBox,
   RecordProps,
+  useEditor,
 } from "tldraw";
 
 export type YouTubeShape = TLBaseShape<
