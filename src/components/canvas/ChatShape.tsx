@@ -18,6 +18,7 @@ export type ChatShape = TLBaseShape<
     w: number;
     h: number;
     messages: string;
+    memory: string;
   }
 >;
 
