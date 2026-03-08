@@ -57,12 +57,12 @@ function CanvasInner() {
     setEditor(editor);
   }, []);
 
-  // Listen for clicks on connection dots
+  // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handleDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
 
-      // Source dot clicked (YouTube/Image/File)
+      // Source dot: start dragging wire
       const sourceId = target.getAttribute("data-connection-source");
       const sourceType = target.getAttribute("data-connection-type");
       if (sourceId && sourceType) {
@@ -71,24 +71,28 @@ function CanvasInner() {
         startLinking(sourceId, sourceType);
         return;
       }
+    };
 
-      // Target dot clicked (Chat)
+    const handleUp = (e: PointerEvent) => {
+      if (!linkingFrom) return;
+
+      const target = e.target as HTMLElement;
       const targetId = target.getAttribute("data-connection-target");
-      if (targetId && linkingFrom) {
+      if (targetId) {
         e.stopPropagation();
         e.preventDefault();
         completeLinking(targetId);
-        return;
-      }
-
-      // Click elsewhere while linking → cancel
-      if (linkingFrom && !sourceId && !targetId) {
+      } else {
         cancelLinking();
       }
     };
 
-    document.addEventListener("pointerdown", handler, true);
-    return () => document.removeEventListener("pointerdown", handler, true);
+    document.addEventListener("pointerdown", handleDown, true);
+    document.addEventListener("pointerup", handleUp, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleDown, true);
+      document.removeEventListener("pointerup", handleUp, true);
+    };
   }, [startLinking, completeLinking, cancelLinking, linkingFrom]);
 
   // Keep connected source data available to Chat (without polling DOM attributes)
