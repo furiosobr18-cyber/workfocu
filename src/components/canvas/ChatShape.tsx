@@ -18,6 +18,7 @@ export type ChatShape = TLBaseShape<
     w: number;
     h: number;
     messages: string;
+    memory: string;
   }
 >;
 
@@ -53,6 +54,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [memory, setMemory] = useState(shape.props.memory || "");
+  const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const connections = getConnectionsForChat(shape.id);
@@ -113,7 +116,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     setInput("");
     setIsLoading(true);
 
+    const memoryMsg: ChatMessage[] = memory.trim()
+      ? [{ role: "user" as const, content: `[MEMÓRIA DO SISTEMA - INSTRUÇÕES PERMANENTES]\n${memory.trim()}\n[/MEMÓRIA]` }]
+      : [];
+
     const finalMessages = [
+      ...memoryMsg,
       ...messages,
       { role: "user" as const, content: context ? `${context}\n\n${userContent}` : userContent },
     ];
@@ -233,6 +241,20 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span>🤖</span> Chat IA
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMemory(!showMemory); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              title="Memória"
+              style={{
+                background: memory.trim() ? "#6a3aff44" : "#2a2a45",
+                border: memory.trim() ? "1px solid #6a3aff" : "1px solid #3a3a55",
+                borderRadius: 6, padding: "2px 6px", fontSize: 11, cursor: "pointer",
+                color: memory.trim() ? "#c0a0ff" : "#8080a0",
+                display: "flex", alignItems: "center", gap: 3,
+              }}
+            >
+              🧠 {memory.trim() ? "Memória ✓" : "Memória"}
+            </button>
             {connections.length > 0 && (
               <span
                 style={{
@@ -289,7 +311,41 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           )}
         </div>
 
-        {/* Connected sources indicator */}
+        {/* Memory panel */}
+        {showMemory && (
+          <div
+            style={{
+              padding: "8px 10px",
+              background: "#18182e",
+              borderBottom: "1px solid #2a2a40",
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 11, color: "#8080c0", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>🧠 Memória (instruções persistentes)</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMemory(false); }}
+                style={{ background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 14 }}
+              >✕</button>
+            </div>
+            <textarea
+              value={memory}
+              onChange={(e) => setMemory(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder="Ex: Sempre responda em português. Seja objetivo. Foque em código React..."
+              style={{
+                width: "100%", minHeight: 60, maxHeight: 120, resize: "vertical",
+                background: "#12121f", border: "1px solid #3a3a55", borderRadius: 6,
+                padding: "6px 8px", color: "#d0d0ff", fontSize: 11, outline: "none",
+                fontFamily: "inherit", lineHeight: 1.4,
+              }}
+            />
+            <div style={{ fontSize: 10, color: "#5050a0", marginTop: 3 }}>
+              Essa memória será enviada em todas as mensagens como contexto.
+            </div>
+          </div>
+        )}
+
         {connections.length > 0 && (
           <div
             style={{
@@ -411,11 +467,11 @@ export class ChatShapeUtil extends BaseBoxShapeUtil<ChatShape> {
   static override type = "canvas-chat" as const;
 
   static override props: RecordProps<ChatShape> = {
-    w: T.number, h: T.number, messages: T.string,
+    w: T.number, h: T.number, messages: T.string, memory: T.string,
   };
 
   getDefaultProps(): ChatShape["props"] {
-    return { w: 350, h: 420, messages: "[]" };
+    return { w: 350, h: 420, messages: "[]", memory: "" };
   }
 
   override canResize() { return true; }
