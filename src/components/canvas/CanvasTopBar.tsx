@@ -131,6 +131,5 @@ const CanvasTopBar = ({ editor }: CanvasTopBarProps) => {
     </div>
   );
 };
-};
 
 export default CanvasTopBar;
