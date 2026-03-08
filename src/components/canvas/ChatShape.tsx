@@ -27,20 +27,14 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/canvas-chat`
 
 const AI_MODELS = [
   { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", emoji: "🦙" },
-  { id: "llama3-70b-8192", label: "Llama 3 70B", emoji: "🦙" },
-  { id: "llama3-8b-8192", label: "Llama 3 8B", emoji: "⚡" },
-  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", emoji: "💨" },
-  { id: "llama-3.2-90b-vision-preview", label: "Llama 3.2 90B Vision", emoji: "👁️" },
-  { id: "llama-3.2-11b-vision-preview", label: "Llama 3.2 11B Vision", emoji: "👁️" },
+  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", emoji: "⚡" },
+  { id: "deepseek-r1-distill-llama-70b", label: "DeepSeek R1 70B", emoji: "🧠" },
   { id: "meta-llama/llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick", emoji: "🚀" },
   { id: "meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout", emoji: "🔍" },
-  { id: "deepseek-r1-distill-llama-70b", label: "DeepSeek R1 70B", emoji: "🧠" },
+  { id: "qwen-qwq-32b", label: "Qwen QWQ 32B", emoji: "🔮" },
   { id: "gemma2-9b-it", label: "Gemma 2 9B", emoji: "💎" },
   { id: "mistral-saba-24b", label: "Mistral Saba 24B", emoji: "🌊" },
-  { id: "qwen-qwq-32b", label: "Qwen QWQ 32B", emoji: "🔮" },
   { id: "allam-2-7b-instruct", label: "Allam 2 7B", emoji: "🌙" },
-  { id: "compound-beta", label: "Compound Beta", emoji: "🧪" },
-  { id: "compound-beta-mini", label: "Compound Mini", emoji: "🔹" },
 ];
 
 // Helper to get YouTube URL from shape
