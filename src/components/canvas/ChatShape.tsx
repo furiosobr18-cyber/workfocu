@@ -67,17 +67,40 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   // Build context from connected shapes
   const buildContext = useCallback((): string => {
     if (connections.length === 0) return "";
-    const parts: string[] = [];
-    for (const conn of connections) {
-      // Access shape data via DOM data attributes stored during render
-      const el = document.querySelector(`[data-shape-info-id="${conn.sourceId}"]`);
-      if (el) {
-        const info = el.getAttribute("data-shape-info") || "";
-        if (info) parts.push(info);
-      }
-    }
-    if (parts.length === 0) return "";
-    return `\n\n[CONTEXTO CONECTADO AO CHAT]\n${parts.join("\n")}\n[/CONTEXTO]`;
+
+    const shapeDataMap = (window as any).__canvasShapeData || {};
+    const sources = connections
+      .map((conn) => {
+        const data = shapeDataMap[conn.sourceId];
+        if (!data) return null;
+
+        if (data.type === "youtube" && data.url) {
+          return { type: "youtube", url: getYouTubeUrl(data.url) };
+        }
+
+        if (data.type === "canvas-image" && data.src) {
+          return {
+            type: "image",
+            name: data.name || "imagem",
+            src: data.src,
+          };
+        }
+
+        if (data.type === "canvas-file") {
+          return {
+            type: "file",
+            name: data.name || "arquivo",
+            fileType: data.fileType || "",
+            textSnippet: data.textSnippet || "",
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    if (sources.length === 0) return "";
+    return `\n\n[CONNECTED_SOURCES_JSON]\n${JSON.stringify(sources)}\n[/CONNECTED_SOURCES_JSON]`;
   }, [connections]);
 
   const sendMessage = useCallback(async () => {
@@ -91,20 +114,10 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     setInput("");
     setIsLoading(true);
 
-    // If there's context, inject it as a system-level hint in the first user message
-    const messagesWithContext = context
-      ? newMessages.map((m, i) =>
-          i === 0 && m.role === "user"
-            ? { ...m, content: context + "\n\n" + m.content }
-            : m
-        )
-      : newMessages;
-
-    // If first message, prepend context
-    const finalMessages =
-      context && newMessages.length === 1
-        ? [{ role: "user" as const, content: context + "\n\n" + userContent }]
-        : messagesWithContext;
+    const finalMessages = [
+      ...messages,
+      { role: "user" as const, content: context ? `${context}\n\n${userContent}` : userContent },
+    ];
 
     let assistantContent = "";
 

@@ -16,6 +16,32 @@ import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 
 const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil];
 
+function isTextLikeMime(fileType: string): boolean {
+  const t = (fileType || "").toLowerCase();
+  return (
+    t.startsWith("text/") ||
+    t.includes("json") ||
+    t.includes("xml") ||
+    t.includes("csv") ||
+    t.includes("javascript") ||
+    t.includes("markdown")
+  );
+}
+
+function dataUrlToTextSnippet(dataUrl: string, maxChars = 4000): string {
+  try {
+    const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
+    if (!match) return "";
+
+    const isBase64 = Boolean(match[2]);
+    const payload = match[3] || "";
+    const decoded = isBase64 ? atob(payload) : decodeURIComponent(payload);
+    return decoded.slice(0, maxChars);
+  } catch {
+    return "";
+  }
+}
+
 function CanvasInner() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -65,37 +91,45 @@ function CanvasInner() {
     return () => document.removeEventListener("pointerdown", handler, true);
   }, [startLinking, completeLinking, cancelLinking, linkingFrom]);
 
-  // Inject shape info as data attributes for the AI context
+  // Keep connected source data available to Chat (without polling DOM attributes)
   useEffect(() => {
     if (!editor) return;
-    const interval = setInterval(() => {
+
+    const updateSourceData = () => {
       const shapes = editor.getCurrentPageShapes();
-      // Remove old markers
-      document.querySelectorAll("[data-shape-info-id]").forEach((el) => el.remove());
+      const shapeData: Record<string, any> = {};
 
       for (const shape of shapes) {
-        let info = "";
         if (shape.type === "youtube") {
-          const url = (shape.props as any).url;
-          if (url) info = `[YouTube] URL: ${url}`;
+          const url = (shape.props as any).url || "";
+          shapeData[shape.id] = { type: "youtube", url };
         } else if (shape.type === "canvas-image") {
-          const name = (shape.props as any).name;
-          if (name) info = `[Imagem] Arquivo: ${name}`;
+          const name = (shape.props as any).name || "imagem";
+          const src = (shape.props as any).src || "";
+          shapeData[shape.id] = { type: "canvas-image", name, src };
         } else if (shape.type === "canvas-file") {
-          const name = (shape.props as any).name;
-          const fileType = (shape.props as any).fileType;
-          if (name) info = `[Arquivo] Nome: ${name}, Tipo: ${fileType}`;
-        }
-        if (info) {
-          const marker = document.createElement("div");
-          marker.setAttribute("data-shape-info-id", shape.id);
-          marker.setAttribute("data-shape-info", info);
-          marker.style.display = "none";
-          document.body.appendChild(marker);
+          const name = (shape.props as any).name || "arquivo";
+          const fileType = (shape.props as any).fileType || "";
+          const src = (shape.props as any).src || "";
+
+          shapeData[shape.id] = {
+            type: "canvas-file",
+            name,
+            fileType,
+            textSnippet: isTextLikeMime(fileType) && src ? dataUrlToTextSnippet(src) : "",
+          };
         }
       }
-    }, 1000);
-    return () => clearInterval(interval);
+
+      (window as any).__canvasShapeData = shapeData;
+    };
+
+    updateSourceData();
+    const interval = setInterval(updateSourceData, 300);
+    return () => {
+      clearInterval(interval);
+      (window as any).__canvasShapeData = {};
+    };
   }, [editor]);
 
   if (loading) {
