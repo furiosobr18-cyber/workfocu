@@ -137,7 +137,7 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
           display: "flex", alignItems: "center", justifyContent: "center",
           background: "#1a1a2e", borderRadius: 12, border: "2px dashed #444",
           color: "#888", fontSize: 14, flexDirection: "column", gap: 8,
-          pointerEvents: "all", position: "relative",
+          pointerEvents: "all", position: "relative", overflow: "visible",
         }}>
           <SourceDot shapeId={shape.id} shapeType="youtube" />
           <span style={{ fontSize: 32 }}>🎬</span>
