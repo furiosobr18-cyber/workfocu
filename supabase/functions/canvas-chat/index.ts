@@ -20,7 +20,6 @@ const corsHeaders = {
 };
 
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
-const MULTIMODAL_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
 const allowedModels = [
   "deepseek-r1-distill-llama-70b",
   "gemma2-9b-it",
@@ -82,19 +81,68 @@ async function fetchYouTubeMetadata(url: string): Promise<string> {
   }
 }
 
-async function buildConnectedContext(sources: ConnectedSource[]): Promise<{
-  contextText: string;
-  imageDataUrls: string[];
-}> {
-  if (sources.length === 0) return { contextText: "", imageDataUrls: [] };
+async function describeImageWithLovable(imageDataUrl: string, lovableApiKey?: string): Promise<string> {
+  if (!lovableApiKey) {
+    return "Imagem conectada (análise visual indisponível no momento).";
+  }
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        stream: false,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você descreve imagens de forma curta e objetiva em português, destacando contexto útil para responder perguntas do usuário.",
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Descreva esta imagem em até 4 frases." },
+              { type: "image_url", image_url: { url: imageDataUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Image analysis error:", response.status, text);
+      return "Imagem conectada, mas não foi possível analisar visualmente agora.";
+    }
+
+    const data = await response.json();
+    const description = data?.choices?.[0]?.message?.content;
+    return typeof description === "string" && description.trim().length > 0
+      ? description.trim()
+      : "Imagem conectada, sem descrição visual disponível.";
+  } catch (error) {
+    console.error("describeImageWithLovable error:", error);
+    return "Imagem conectada, mas ocorreu erro ao analisar.";
+  }
+}
+
+async function buildConnectedContext(
+  sources: ConnectedSource[],
+  lovableApiKey?: string,
+): Promise<string> {
+  if (sources.length === 0) return "";
 
   const contextLines: string[] = [];
-  const imageDataUrls: string[] = [];
 
   for (const source of sources) {
     if (source.type === "youtube" && source.url) {
       const videoInfo = await fetchYouTubeMetadata(source.url);
       contextLines.push(`[YOUTUBE] ${videoInfo} | URL: ${source.url}`);
+      continue;
     }
 
     if (source.type === "file") {
@@ -102,24 +150,28 @@ async function buildConnectedContext(sources: ConnectedSource[]): Promise<{
       const fileType = source.fileType || "desconhecido";
       if (source.textSnippet) {
         contextLines.push(
-          `[ARQUIVO] ${name} (${fileType})\nConteúdo extraído:\n${source.textSnippet.slice(0, 3000)}`
+          `[ARQUIVO] ${name} (${fileType})\nConteúdo extraído:\n${source.textSnippet.slice(0, 3000)}`,
         );
       } else {
         contextLines.push(`[ARQUIVO] ${name} (${fileType}) conectado.`);
       }
+      continue;
     }
 
-    if (source.type === "image" && source.src?.startsWith("data:image/")) {
-      imageDataUrls.push(source.src);
-      contextLines.push(`[IMAGEM] ${source.name || "imagem"} conectada.`);
+    if (source.type === "image") {
+      const imageName = source.name || "imagem";
+      if (source.src?.startsWith("data:image/")) {
+        const description = await describeImageWithLovable(source.src, lovableApiKey);
+        contextLines.push(`[IMAGEM] ${imageName}\nDescrição visual:\n${description}`);
+      } else {
+        contextLines.push(`[IMAGEM] ${imageName} conectada.`);
+      }
     }
   }
 
-  const contextText = contextLines.length
+  return contextLines.length
     ? `\n\n[CONTEXTO CONECTADO]\n${contextLines.join("\n\n")}\n[/CONTEXTO CONECTADO]`
     : "";
-
-  return { contextText, imageDataUrls };
 }
 
 async function callGroq({
@@ -129,7 +181,7 @@ async function callGroq({
 }: {
   apiKey: string;
   model: string;
-  messages: Array<{ role: "system" | "user" | "assistant"; content: string | unknown[] }>;
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
 }) {
   return fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -150,19 +202,19 @@ serve(async (req) => {
 
   try {
     const { messages, model } = await req.json();
+
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || undefined;
+
     const incomingMessages = Array.isArray(messages) ? (messages as ChatMessage[]) : [];
     const { cleanedMessages, sources } = extractConnectedSources(incomingMessages);
-    const { contextText, imageDataUrls } = await buildConnectedContext(sources);
+    const contextText = await buildConnectedContext(sources, LOVABLE_API_KEY);
 
-    let selectedModel = allowedModels.includes(String(model)) ? String(model) : DEFAULT_MODEL;
-    if (imageDataUrls.length > 0) {
-      selectedModel = MULTIMODAL_MODEL;
-    }
+    const selectedModel = allowedModels.includes(String(model)) ? String(model) : DEFAULT_MODEL;
 
-    const payloadMessages: Array<{ role: "system" | "user" | "assistant"; content: string | unknown[] }> = [
+    const payloadMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       {
         role: "system",
         content:
@@ -179,25 +231,10 @@ serve(async (req) => {
 
       if (typeof lastUserIndex === "number") {
         const current = payloadMessages[lastUserIndex];
-        const baseText = typeof current.content === "string" ? current.content : "";
-
-        if (imageDataUrls.length > 0) {
-          payloadMessages[lastUserIndex] = {
-            role: "user",
-            content: [
-              { type: "text", text: `${contextText}\n\n${baseText}` },
-              ...imageDataUrls.slice(0, 2).map((url) => ({
-                type: "image_url",
-                image_url: { url },
-              })),
-            ],
-          };
-        } else {
-          payloadMessages[lastUserIndex] = {
-            role: "user",
-            content: `${contextText}\n\n${baseText}`.trim(),
-          };
-        }
+        payloadMessages[lastUserIndex] = {
+          role: "user",
+          content: `${contextText}\n\n${current.content}`.trim(),
+        };
       }
     }
 
@@ -234,10 +271,13 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
