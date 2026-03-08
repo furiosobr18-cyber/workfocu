@@ -42,26 +42,33 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
   }, [linkingFrom, toLocal]);
 
   // Find the source dot screen position when linking starts
+  // Use an interval to keep recalculating until svgRef is ready
   useEffect(() => {
     if (!linkingFrom || !editor) {
       setDragStartPos(null);
       return;
     }
 
-    const shape = editor.getShape(linkingFrom.id as any);
-    if (!shape) return;
-    const bounds = editor.getShapePageBounds(shape);
-    if (!bounds) return;
+    const calcPos = () => {
+      const shape = editor.getShape(linkingFrom.id as any);
+      if (!shape) return;
+      const bounds = editor.getShapePageBounds(shape);
+      if (!bounds) return;
 
-    // The dot is 14px outside the shape edge; account for zoom
-    const camera = editor.getCamera();
-    const dotOffset = 14 / camera.z;
+      const camera = editor.getCamera();
+      const dotOffset = 14 / camera.z;
 
-    const screenPos = editor.pageToScreen({
-      x: bounds.x + bounds.w + dotOffset,
-      y: bounds.y + bounds.h / 2,
-    });
-    setDragStartPos(toLocal(screenPos.x, screenPos.y));
+      const screenPos = editor.pageToScreen({
+        x: bounds.x + bounds.w + dotOffset,
+        y: bounds.y + bounds.h / 2,
+      });
+      setDragStartPos(toLocal(screenPos.x, screenPos.y));
+    };
+
+    // Calculate immediately and keep updating (shape might move during drag)
+    calcPos();
+    const interval = setInterval(calcPos, 50);
+    return () => clearInterval(interval);
   }, [linkingFrom, editor, toLocal]);
 
   // Update existing connection lines
@@ -103,7 +110,7 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
 
   const isDragging = linkingFrom && dragStartPos && mousePos;
 
-  if (lines.length === 0 && !isDragging) return null;
+  // Always render SVG so svgRef is available for coordinate conversion
 
   return (
     <svg
