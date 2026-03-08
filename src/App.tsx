@@ -12,6 +12,7 @@ import Pomodoro from "./pages/Pomodoro";
 import Tasks from "./pages/Tasks";
 import Notes from "./pages/Notes";
 import CalendarPage from "./pages/CalendarPage";
+import Canvas from "./pages/Canvas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
