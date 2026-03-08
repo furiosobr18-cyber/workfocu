@@ -228,7 +228,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, messages, isLoading, selectedModel, buildContext]);
+  }, [input, messages, isLoading, selectedModel, buildContext, memory, updateMessages]);
 
   const handleTargetClick = useCallback(() => {
     if (linkingFrom) {
