@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tldraw, Editor } from "tldraw";
+import { Tldraw, Editor, TldrawUiMenuItem, DefaultToolbar, useIsToolSelected, useTools } from "tldraw";
 import "tldraw/tldraw.css";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
