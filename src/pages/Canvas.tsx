@@ -11,7 +11,6 @@ import { ImageShapeUtil } from "@/components/canvas/ImageShape";
 import { FileShapeUtil } from "@/components/canvas/FileShape";
 import { ChatShapeUtil } from "@/components/canvas/ChatShape";
 import CanvasToolbar from "@/components/canvas/CanvasToolbar";
-import CanvasTopBar from "@/components/canvas/CanvasTopBar";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 
@@ -220,7 +219,6 @@ function CanvasInner() {
           />
         </div>
         <ConnectionOverlay editor={editor} />
-        <CanvasTopBar editor={editor} />
         <CanvasToolbar editor={editor} />
       </main>
     </div>

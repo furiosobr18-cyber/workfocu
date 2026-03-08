@@ -1,50 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3 } from "lucide-react";
 import { Editor } from "tldraw";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
 interface CanvasToolbarProps {
   editor: Editor | null;
 }
 
-const brushSizes = [
-  { label: "S", size: 2, dotSize: 4 },
-  { label: "M", size: 6, dotSize: 8 },
-  { label: "L", size: 12, dotSize: 14 },
-  { label: "XL", size: 22, dotSize: 18 },
-];
-
 const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   const { theme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<string>("select");
-  const [brushIndex, setBrushIndex] = useState(1); // default M
-  const [showBrushPicker, setShowBrushPicker] = useState(false);
-  const brushRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (brushRef.current && !brushRef.current.contains(e.target as Node)) {
-        setShowBrushPicker(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   if (!editor) return null;
 
   const selectTool = (tool: string) => {
     setActiveTool(tool);
     editor.setCurrentTool(tool);
-  };
-
-  const selectBrush = (index: number) => {
-    setBrushIndex(index);
-    setShowBrushPicker(false);
-    editor.setStyleForNextShapes(editor.getStyleForNextShape("size" as any) as any, brushSizes[index].size as any);
-    // Also activate draw tool
-    selectTool("draw");
   };
 
   const zoomLevel = Math.round((editor.getZoomLevel?.() ?? 1) * 100);
@@ -62,6 +34,7 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   const toolButtons = [
     { id: "select", icon: MousePointer2, title: "Selecionar" },
     { id: "hand", icon: Hand, title: "Mover" },
+    { id: "draw", icon: Pen, title: "Desenhar" },
   ];
 
   return (
@@ -81,54 +54,6 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
           <Icon className="w-4 h-4" />
         </button>
       ))}
-
-      {/* Draw / Brush picker */}
-      <div className="relative" ref={brushRef}>
-        <button
-          onClick={() => {
-            if (activeTool === "draw") {
-              setShowBrushPicker(!showBrushPicker);
-            } else {
-              selectTool("draw");
-            }
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setShowBrushPicker(!showBrushPicker);
-          }}
-          title="Desenhar (clique de novo para tamanho)"
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "draw"
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-          }`}
-        >
-          <Pen className="w-4 h-4" />
-        </button>
-
-        {showBrushPicker && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[hsl(0,0%,18%)] border border-[hsl(0,0%,25%)] rounded-xl p-2 shadow-2xl animate-fade-in flex items-end gap-2">
-            {brushSizes.map((b, i) => (
-              <button
-                key={i}
-                onClick={() => selectBrush(i)}
-                className={`flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg transition-colors ${
-                  brushIndex === i
-                    ? "bg-[hsl(0,0%,30%)]"
-                    : "hover:bg-[hsl(0,0%,24%)]"
-                }`}
-                title={b.label}
-              >
-                <div
-                  className="rounded-full bg-[hsl(0,0%,85%)]"
-                  style={{ width: b.dotSize, height: b.dotSize }}
-                />
-                <span className="text-[10px] text-[hsl(0,0%,55%)]">{b.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Separator */}
       <div className="w-px h-5 bg-border mx-1" />
