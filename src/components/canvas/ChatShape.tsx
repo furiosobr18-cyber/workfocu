@@ -116,7 +116,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     setInput("");
     setIsLoading(true);
 
+    const memoryMsg: ChatMessage[] = memory.trim()
+      ? [{ role: "user" as const, content: `[MEMÓRIA DO SISTEMA - INSTRUÇÕES PERMANENTES]\n${memory.trim()}\n[/MEMÓRIA]` }]
+      : [];
+
     const finalMessages = [
+      ...memoryMsg,
       ...messages,
       { role: "user" as const, content: context ? `${context}\n\n${userContent}` : userContent },
     ];
