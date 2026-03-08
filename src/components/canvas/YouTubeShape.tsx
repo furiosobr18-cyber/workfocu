@@ -24,6 +24,18 @@ function getYouTubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+// Neutral WorkFocus colors
+const WF = {
+  dotBg: "radial-gradient(circle, hsl(0,0%,98%) 30%, hsl(0,0%,60%) 100%)",
+  dotBorder: "hsl(0,0%,60%)",
+  dotShadow: "0 0 10px hsla(0,0%,60%,0.5), 0 0 20px hsla(0,0%,60%,0.2)",
+  dotHoverShadow: "0 0 16px hsla(0,0%,70%,0.7), 0 0 32px hsla(0,0%,60%,0.4)",
+  targetBg: "radial-gradient(circle, hsl(0,0%,98%) 30%, hsl(0,0%,45%) 100%)",
+  targetBorder: "hsl(0,0%,45%)",
+  targetShadow: "0 0 10px hsla(0,0%,45%,0.5), 0 0 20px hsla(0,0%,45%,0.2)",
+  targetHoverShadow: "0 0 16px hsla(0,0%,55%,0.7), 0 0 32px hsla(0,0%,45%,0.4)",
+};
+
 // Connection dot component used by YouTube, Image, File
 export function SourceDot({
   shapeId,
@@ -51,22 +63,20 @@ export function SourceDot({
         width: 20,
         height: 20,
         borderRadius: "50%",
-        background: "radial-gradient(circle, #fff 30%, #4af 100%)",
-        border: "3px solid #4af",
-        boxShadow: "0 0 12px rgba(68,170,255,0.7), 0 0 24px rgba(68,170,255,0.3)",
+        background: WF.dotBg,
+        border: `3px solid ${WF.dotBorder}`,
+        boxShadow: WF.dotShadow,
         cursor: "grab",
         zIndex: 20,
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.4)";
-        (e.target as HTMLElement).style.boxShadow =
-          "0 0 18px rgba(68,170,255,0.9), 0 0 36px rgba(68,170,255,0.5)";
+        (e.target as HTMLElement).style.boxShadow = WF.dotHoverShadow;
       }}
       onMouseLeave={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1)";
-        (e.target as HTMLElement).style.boxShadow =
-          "0 0 12px rgba(68,170,255,0.7), 0 0 24px rgba(68,170,255,0.3)";
+        (e.target as HTMLElement).style.boxShadow = WF.dotShadow;
       }}
       title="Arraste para conectar ao Chat"
     />
@@ -85,22 +95,20 @@ export function TargetDot({ shapeId }: { shapeId: string }) {
         width: 20,
         height: 20,
         borderRadius: "50%",
-        background: "radial-gradient(circle, #fff 30%, #a040ff 100%)",
-        border: "3px solid #a040ff",
-        boxShadow: "0 0 12px rgba(160,64,255,0.7), 0 0 24px rgba(160,64,255,0.3)",
+        background: WF.targetBg,
+        border: `3px solid ${WF.targetBorder}`,
+        boxShadow: WF.targetShadow,
         cursor: "pointer",
         zIndex: 20,
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.4)";
-        (e.target as HTMLElement).style.boxShadow =
-          "0 0 18px rgba(160,64,255,0.9), 0 0 36px rgba(160,64,255,0.5)";
+        (e.target as HTMLElement).style.boxShadow = WF.targetHoverShadow;
       }}
       onMouseLeave={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1)";
-        (e.target as HTMLElement).style.boxShadow =
-          "0 0 12px rgba(160,64,255,0.7), 0 0 24px rgba(160,64,255,0.3)";
+        (e.target as HTMLElement).style.boxShadow = WF.targetShadow;
       }}
       title="Solte aqui para conectar"
     />
@@ -135,8 +143,8 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
         <HTMLContainer style={{
           width: shape.props.w, height: shape.props.h,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#1a1a2e", borderRadius: 12, border: "2px dashed #444",
-          color: "#888", fontSize: 14, flexDirection: "column", gap: 8,
+          background: "hsl(0,0%,10%)", borderRadius: 12, border: "2px dashed hsl(0,0%,20%)",
+          color: "hsl(0,0%,50%)", fontSize: 14, flexDirection: "column", gap: 8,
           pointerEvents: "all", position: "relative", overflow: "visible",
         }}>
           <SourceDot shapeId={shape.id} shapeType="youtube" />
@@ -151,8 +159,8 @@ export class YouTubeShapeUtil extends BaseBoxShapeUtil<YouTubeShape> {
         <HTMLContainer style={{
           width: shape.props.w, height: shape.props.h,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#1a1a2e", borderRadius: 12, border: "2px solid #f44",
-          color: "#f88", fontSize: 14, position: "relative", pointerEvents: "all", overflow: "visible",
+          background: "hsl(0,0%,10%)", borderRadius: 12, border: "2px solid hsl(0,84%,60%)",
+          color: "hsl(0,70%,65%)", fontSize: 14, position: "relative", pointerEvents: "all", overflow: "visible",
         }}>
           <SourceDot shapeId={shape.id} shapeType="youtube" />
           URL inválida do YouTube
