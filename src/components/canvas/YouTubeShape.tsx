@@ -36,8 +36,8 @@ export function SourceDot({
 }) {
   const posStyle =
     side === "right"
-      ? { right: -8, left: "auto" as const }
-      : { left: -8, right: "auto" as const };
+      ? { right: -14, left: "auto" as const }
+      : { left: -14, right: "auto" as const };
 
   return (
     <div
@@ -48,27 +48,27 @@ export function SourceDot({
         top: "50%",
         transform: "translateY(-50%)",
         ...posStyle,
-        width: 16,
-        height: 16,
+        width: 20,
+        height: 20,
         borderRadius: "50%",
-        background: "radial-gradient(circle, #fff 40%, #4af 100%)",
-        border: "2px solid #4af",
-        boxShadow: "0 0 10px rgba(68,170,255,0.6), 0 0 20px rgba(68,170,255,0.2)",
-        cursor: "pointer",
+        background: "radial-gradient(circle, #fff 30%, #4af 100%)",
+        border: "3px solid #4af",
+        boxShadow: "0 0 12px rgba(68,170,255,0.7), 0 0 24px rgba(68,170,255,0.3)",
+        cursor: "grab",
         zIndex: 20,
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
-        (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.3)";
+        (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.4)";
         (e.target as HTMLElement).style.boxShadow =
-          "0 0 14px rgba(68,170,255,0.8), 0 0 28px rgba(68,170,255,0.4)";
+          "0 0 18px rgba(68,170,255,0.9), 0 0 36px rgba(68,170,255,0.5)";
       }}
       onMouseLeave={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1)";
         (e.target as HTMLElement).style.boxShadow =
-          "0 0 10px rgba(68,170,255,0.6), 0 0 20px rgba(68,170,255,0.2)";
+          "0 0 12px rgba(68,170,255,0.7), 0 0 24px rgba(68,170,255,0.3)";
       }}
-      title="Clique para conectar ao Chat"
+      title="Arraste para conectar ao Chat"
     />
   );
 }
@@ -79,30 +79,30 @@ export function TargetDot({ shapeId }: { shapeId: string }) {
       data-connection-target={shapeId}
       style={{
         position: "absolute",
-        left: -8,
+        left: -14,
         top: "50%",
         transform: "translateY(-50%)",
-        width: 16,
-        height: 16,
+        width: 20,
+        height: 20,
         borderRadius: "50%",
-        background: "radial-gradient(circle, #fff 40%, #a040ff 100%)",
-        border: "2px solid #a040ff",
-        boxShadow: "0 0 10px rgba(160,64,255,0.6), 0 0 20px rgba(160,64,255,0.2)",
+        background: "radial-gradient(circle, #fff 30%, #a040ff 100%)",
+        border: "3px solid #a040ff",
+        boxShadow: "0 0 12px rgba(160,64,255,0.7), 0 0 24px rgba(160,64,255,0.3)",
         cursor: "pointer",
         zIndex: 20,
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
-        (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.3)";
+        (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1.4)";
         (e.target as HTMLElement).style.boxShadow =
-          "0 0 14px rgba(160,64,255,0.8), 0 0 28px rgba(160,64,255,0.4)";
+          "0 0 18px rgba(160,64,255,0.9), 0 0 36px rgba(160,64,255,0.5)";
       }}
       onMouseLeave={(e) => {
         (e.target as HTMLElement).style.transform = "translateY(-50%) scale(1)";
         (e.target as HTMLElement).style.boxShadow =
-          "0 0 10px rgba(160,64,255,0.6), 0 0 20px rgba(160,64,255,0.2)";
+          "0 0 12px rgba(160,64,255,0.7), 0 0 24px rgba(160,64,255,0.3)";
       }}
-      title="Clique para receber conexão"
+      title="Solte aqui para conectar"
     />
   );
 }

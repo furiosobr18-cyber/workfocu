@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Editor } from "tldraw";
 import { useConnections } from "./ConnectionContext";
 
@@ -13,7 +13,45 @@ interface LinePos {
 export default function ConnectionOverlay({ editor }: { editor: Editor | null }) {
   const { connections, linkingFrom } = useConnections();
   const [lines, setLines] = useState<LinePos[]>([]);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
 
+  // Track mouse while dragging a wire
+  useEffect(() => {
+    if (!linkingFrom) {
+      setMousePos(null);
+      setDragStartPos(null);
+      return;
+    }
+
+    const onMove = (e: PointerEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+
+    document.addEventListener("pointermove", onMove);
+    return () => document.removeEventListener("pointermove", onMove);
+  }, [linkingFrom]);
+
+  // Find the source dot screen position when linking starts
+  useEffect(() => {
+    if (!linkingFrom || !editor) {
+      setDragStartPos(null);
+      return;
+    }
+
+    const shape = editor.getShape(linkingFrom.id as any);
+    if (!shape) return;
+    const bounds = editor.getShapePageBounds(shape);
+    if (!bounds) return;
+
+    const screenPos = editor.pageToScreen({
+      x: bounds.x + bounds.w,
+      y: bounds.y + bounds.h / 2,
+    });
+    setDragStartPos(screenPos);
+  }, [linkingFrom, editor]);
+
+  // Update existing connection lines
   useEffect(() => {
     if (!editor || connections.length === 0) {
       setLines([]);
@@ -31,16 +69,8 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
         const tB = editor.getShapePageBounds(target);
         if (!sB || !tB) continue;
 
-        // Source: right side center
-        const sx = sB.x + sB.w;
-        const sy = sB.y + sB.h / 2;
-        // Target: left side center
-        const tx = tB.x;
-        const ty = tB.y + tB.h / 2;
-
-        // Convert page coords to screen
-        const s = editor.pageToScreen({ x: sx, y: sy });
-        const t = editor.pageToScreen({ x: tx, y: ty });
+        const s = editor.pageToScreen({ x: sB.x + sB.w, y: sB.y + sB.h / 2 });
+        const t = editor.pageToScreen({ x: tB.x, y: tB.y + tB.h / 2 });
 
         newLines.push({ id: conn.id, x1: s.x, y1: s.y, x2: t.x, y2: t.y });
       }
@@ -48,12 +78,13 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
     };
 
     update();
-    // Listen to camera and shape changes
     const interval = setInterval(update, 50);
     return () => clearInterval(interval);
   }, [editor, connections]);
 
-  if (lines.length === 0 && !linkingFrom) return null;
+  const isDragging = linkingFrom && dragStartPos && mousePos;
+
+  if (lines.length === 0 && !isDragging) return null;
 
   return (
     <svg
@@ -70,7 +101,17 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
           <stop offset="0%" stopColor="#4af" />
           <stop offset="100%" stopColor="#a040ff" />
         </linearGradient>
-        {/* Animated dash */}
+        <linearGradient id="drag-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#4af" />
+          <stop offset="100%" stopColor="#a040ff" stopOpacity={0.5} />
+        </linearGradient>
+        <filter id="wire-glow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
         <style>{`
           @keyframes flowDash {
             to { stroke-dashoffset: -20; }
@@ -86,54 +127,99 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
           .conn-glow {
             animation: pulseGlow 2s ease-in-out infinite;
           }
+          @keyframes dragPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+          }
+          .drag-wire {
+            animation: dragPulse 0.8s ease-in-out infinite;
+          }
         `}</style>
       </defs>
-      {lines.map((line) => (
-        <g key={line.id}>
-          {/* Glow */}
-          <line
-            x1={line.x1}
-            y1={line.y1}
-            x2={line.x2}
-            y2={line.y2}
-            stroke="url(#conn-gradient)"
-            strokeWidth={6}
-            strokeLinecap="round"
-            className="conn-glow"
-          />
-          {/* Main line */}
-          <line
-            x1={line.x1}
-            y1={line.y1}
-            x2={line.x2}
-            y2={line.y2}
-            stroke="url(#conn-gradient)"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            className="conn-line"
-          />
-          {/* Data transfer particles (moving) */}
-          {[0, 0.35, 0.7].map((delay, i) => (
-            <circle key={i} r={3} fill="#ffffff" className="conn-glow">
-              <animateMotion
-                dur="1.8s"
-                repeatCount="indefinite"
-                begin={`${delay}s`}
-                path={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
-              />
-            </circle>
-          ))}
-          {/* Source dot */}
-          <circle cx={line.x1} cy={line.y1} r={6} fill="#4af" stroke="#fff" strokeWidth={2} />
-          {/* Target dot */}
-          <circle cx={line.x2} cy={line.y2} r={6} fill="#a040ff" stroke="#fff" strokeWidth={2} />
+
+      {/* Existing connections */}
+      {lines.map((line) => {
+        const dx = line.x2 - line.x1;
+        const cpOffset = Math.max(Math.abs(dx) * 0.4, 60);
+        const path = `M ${line.x1} ${line.y1} C ${line.x1 + cpOffset} ${line.y1}, ${line.x2 - cpOffset} ${line.y2}, ${line.x2} ${line.y2}`;
+
+        return (
+          <g key={line.id}>
+            {/* Glow */}
+            <path
+              d={path}
+              stroke="url(#conn-gradient)"
+              strokeWidth={6}
+              fill="none"
+              strokeLinecap="round"
+              className="conn-glow"
+            />
+            {/* Main line */}
+            <path
+              d={path}
+              stroke="url(#conn-gradient)"
+              strokeWidth={2.5}
+              fill="none"
+              strokeLinecap="round"
+              className="conn-line"
+            />
+            {/* Particles */}
+            {[0, 0.6, 1.2].map((delay, i) => (
+              <circle key={i} r={3.5} fill="#ffffff" className="conn-glow">
+                <animateMotion
+                  dur="2s"
+                  repeatCount="indefinite"
+                  begin={`${delay}s`}
+                  path={path}
+                />
+              </circle>
+            ))}
+            {/* Endpoint dots */}
+            <circle cx={line.x1} cy={line.y1} r={7} fill="#4af" stroke="#fff" strokeWidth={2} />
+            <circle cx={line.x2} cy={line.y2} r={7} fill="#a040ff" stroke="#fff" strokeWidth={2} />
+          </g>
+        );
+      })}
+
+      {/* Dragging wire preview */}
+      {isDragging && (
+        <g>
+          {(() => {
+            const dx = mousePos.x - dragStartPos.x;
+            const cpOffset = Math.max(Math.abs(dx) * 0.4, 40);
+            const path = `M ${dragStartPos.x} ${dragStartPos.y} C ${dragStartPos.x + cpOffset} ${dragStartPos.y}, ${mousePos.x - cpOffset} ${mousePos.y}, ${mousePos.x} ${mousePos.y}`;
+            return (
+              <>
+                {/* Glow */}
+                <path
+                  d={path}
+                  stroke="url(#drag-gradient)"
+                  strokeWidth={5}
+                  fill="none"
+                  strokeLinecap="round"
+                  opacity={0.4}
+                  filter="url(#wire-glow)"
+                />
+                {/* Wire */}
+                <path
+                  d={path}
+                  stroke="url(#drag-gradient)"
+                  strokeWidth={2.5}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray="6 4"
+                  className="drag-wire"
+                />
+                {/* Start dot */}
+                <circle cx={dragStartPos.x} cy={dragStartPos.y} r={7} fill="#4af" stroke="#fff" strokeWidth={2} />
+                {/* Cursor dot */}
+                <circle cx={mousePos.x} cy={mousePos.y} r={5} fill="#a040ff" stroke="#fff" strokeWidth={2} opacity={0.8}>
+                  <animate attributeName="r" values="5;7;5" dur="1s" repeatCount="indefinite" />
+                </circle>
+              </>
+            );
+          })()}
         </g>
-      ))}
-      {/* Linking mode indicator */}
-      {linkingFrom && (
-        <text x={20} y={30} fill="#4af" fontSize={13} fontFamily="sans-serif">
-          🔗 Clique na bolinha do Chat para conectar...
-        </text>
       )}
     </svg>
   );
