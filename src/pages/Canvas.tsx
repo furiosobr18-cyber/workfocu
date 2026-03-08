@@ -1,22 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tldraw } from "tldraw";
+import { Tldraw, Editor } from "tldraw";
 import "tldraw/tldraw.css";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { YouTubeShapeUtil } from "@/components/canvas/YouTubeShape";
+import { ImageShapeUtil } from "@/components/canvas/ImageShape";
+import { FileShapeUtil } from "@/components/canvas/FileShape";
+import { ChatShapeUtil } from "@/components/canvas/ChatShape";
+import CanvasToolbar from "@/components/canvas/CanvasToolbar";
+
+const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil];
 
 const Canvas = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/");
     }
   }, [user, loading, navigate]);
+
+  const handleMount = useCallback((editor: Editor) => {
+    setEditor(editor);
+  }, []);
 
   if (loading) {
     return (
@@ -41,8 +53,9 @@ const Canvas = () => {
           {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
         </Button>
         <div className="absolute inset-0">
-          <Tldraw />
+          <Tldraw shapeUtils={customShapeUtils} onMount={handleMount} />
         </div>
+        <CanvasToolbar editor={editor} />
       </main>
     </div>
   );

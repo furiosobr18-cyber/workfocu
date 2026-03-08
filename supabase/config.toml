@@ -2,3 +2,6 @@ project_id = "anzytdsnikxffiasksrp"
 
 [functions.security-log]
 verify_jwt = false
+
+[functions.canvas-chat]
+verify_jwt = false
