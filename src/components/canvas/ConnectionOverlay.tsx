@@ -112,17 +112,16 @@ export default function ConnectionOverlay({ editor }: { editor: Editor | null })
             strokeLinecap="round"
             className="conn-line"
           />
-          {/* Particles along the line */}
-          {[0.2, 0.5, 0.8].map((t, i) => (
-            <circle
-              key={i}
-              cx={line.x1 + (line.x2 - line.x1) * t}
-              cy={line.y1 + (line.y2 - line.y1) * t}
-              r={3}
-              fill="#fff"
-              className="conn-glow"
-              style={{ animationDelay: `${i * 0.3}s` }}
-            />
+          {/* Data transfer particles (moving) */}
+          {[0, 0.35, 0.7].map((delay, i) => (
+            <circle key={i} r={3} fill="#ffffff" className="conn-glow">
+              <animateMotion
+                dur="1.8s"
+                repeatCount="indefinite"
+                begin={`${delay}s`}
+                path={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
+              />
+            </circle>
           ))}
           {/* Source dot */}
           <circle cx={line.x1} cy={line.y1} r={6} fill="#4af" stroke="#fff" strokeWidth={2} />
