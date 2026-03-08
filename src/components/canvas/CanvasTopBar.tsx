@@ -91,37 +91,35 @@ const CanvasTopBar = ({ editor }: CanvasTopBarProps) => {
   return (
     <div
       ref={menuRef}
-      className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] flex items-center gap-0 bg-card border border-border rounded-xl px-1 py-1 shadow-xl"
+      className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] flex items-center gap-0"
     >
       {/* Layout button */}
       <div className="relative">
         <button
           onClick={() => setOpenMenu(openMenu === "layout" ? null : "layout")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            openMenu === "layout"
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-[hsl(0,0%,18%)] text-[hsl(0,0%,85%)] hover:bg-[hsl(0,0%,24%)] border border-[hsl(0,0%,25%)] shadow-lg ${
+            openMenu === "layout" ? "bg-[hsl(0,0%,24%)]" : ""
           }`}
         >
-          <LayoutGrid className="w-4 h-4" />
+          <Columns3 className="w-4 h-4" />
           Layout
         </button>
 
         {openMenu === "layout" && (
-          <div className="absolute top-full left-0 mt-1 w-52 bg-card border border-border rounded-xl py-1.5 shadow-2xl animate-fade-in">
+          <div className="absolute top-full left-0 mt-1.5 w-56 bg-[hsl(0,0%,18%)] border border-[hsl(0,0%,25%)] rounded-xl py-2 shadow-2xl animate-fade-in">
             {layoutItems.map((item, i) =>
               (item as any).divider ? (
-                <div key={i} className="h-px bg-border my-1.5 mx-2" />
+                <div key={i} className="h-px bg-[hsl(0,0%,25%)] my-2 mx-3" />
               ) : (
                 <button
                   key={i}
                   onClick={item.action}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-accent/50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(0,0%,85%)] hover:bg-[hsl(0,0%,24%)] transition-colors"
                 >
-                  {item.icon && <item.icon className="w-4 h-4 text-muted-foreground" />}
+                  {item.icon && <item.icon className="w-4 h-4 text-[hsl(0,0%,60%)]" />}
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.shortcut && (
-                    <span className="text-xs text-muted-foreground">{item.shortcut}</span>
+                    <span className="text-xs text-[hsl(0,0%,50%)]">{item.shortcut}</span>
                   )}
                 </button>
               )
@@ -130,43 +128,6 @@ const CanvasTopBar = ({ editor }: CanvasTopBarProps) => {
         )}
       </div>
 
-      {/* Texto button */}
-      <button
-        onClick={addTextShape}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-      >
-        <Type className="w-4 h-4" />
-        Texto
-      </button>
-
-      {/* Inserir button */}
-      <div className="relative">
-        <button
-          onClick={() => setOpenMenu(openMenu === "insert" ? null : "insert")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            openMenu === "insert"
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-          }`}
-        >
-          Inserir
-        </button>
-
-        {openMenu === "insert" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-xl py-1.5 shadow-2xl animate-fade-in">
-            {insertItems.map((item, i) => (
-              <button
-                key={i}
-                onClick={item.action}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-accent/50 transition-colors"
-              >
-                <item.icon className="w-4 h-4 text-muted-foreground" />
-                <span className="flex-1 text-left">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };
