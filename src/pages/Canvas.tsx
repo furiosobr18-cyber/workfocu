@@ -199,12 +199,12 @@ function CanvasInner() {
 
         {/* Linking mode banner */}
         {linkingFrom && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-purple-600/90 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in">
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-muted/90 text-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in border border-border">
             <span className="animate-pulse">🔗</span>
-            Arraste até a bolinha roxa do Chat para conectar
+            Arraste até a bolinha do Chat para conectar
             <button
               onClick={cancelLinking}
-              className="ml-2 bg-white/20 hover:bg-white/30 rounded px-2 py-0.5 text-xs"
+              className="ml-2 bg-accent hover:bg-accent/80 rounded px-2 py-0.5 text-xs text-muted-foreground"
             >
               Cancelar
             </button>
