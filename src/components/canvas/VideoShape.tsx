@@ -8,6 +8,15 @@ import {
   RecordProps,
 } from "tldraw";
 import { SourceDot } from "./YouTubeShape";
+import { useState } from "react";
+
+const FIT_MODES = ["cover", "contain", "fill", "none"] as const;
+const FIT_LABELS: Record<string, string> = {
+  cover: "Cover",
+  contain: "Fit",
+  fill: "Stretch",
+  none: "Original",
+};
 
 export type VideoShape = TLBaseShape<
   "canvas-video",
@@ -16,6 +25,9 @@ export type VideoShape = TLBaseShape<
     h: number;
     src: string;
     name: string;
+    objectFit: string;
+    borderRadius: number;
+    opacity: number;
   }
 >;
 
@@ -24,10 +36,11 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
 
   static override props: RecordProps<VideoShape> = {
     w: T.number, h: T.number, src: T.string, name: T.string,
+    objectFit: T.string, borderRadius: T.number, opacity: T.number,
   };
 
   getDefaultProps(): VideoShape["props"] {
-    return { w: 400, h: 260, src: "", name: "" };
+    return { w: 400, h: 260, src: "", name: "", objectFit: "cover", borderRadius: 12, opacity: 1 };
   }
 
   override canResize() { return true; }
@@ -38,12 +51,14 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
   }
 
   component(shape: VideoShape) {
+    const br = shape.props.borderRadius;
+
     if (!shape.props.src) {
       return (
         <HTMLContainer style={{
           width: shape.props.w, height: shape.props.h,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "hsl(var(--card))", borderRadius: 12, border: "2px dashed hsl(var(--border))",
+          background: "hsl(var(--card))", borderRadius: br, border: "2px dashed hsl(var(--border))",
           color: "hsl(var(--muted-foreground))", fontSize: 14, flexDirection: "column", gap: 8,
           pointerEvents: "all", position: "relative",
         }}>
@@ -57,23 +72,29 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
-        borderRadius: 12, overflow: "visible", pointerEvents: "all", position: "relative",
+        borderRadius: br, overflow: "visible", pointerEvents: "all", position: "relative",
+        opacity: shape.props.opacity,
       }}>
-        <div style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", background: "#000" }}>
+        <div style={{ width: "100%", height: "100%", borderRadius: br, overflow: "hidden", background: "#000" }}>
           <video
             src={shape.props.src}
             controls
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            style={{
+              width: "100%", height: "100%",
+              objectFit: (shape.props.objectFit || "cover") as any,
+            }}
             draggable={false}
           />
         </div>
+        <FitControls shape={shape} />
         <SourceDot shapeId={shape.id} shapeType="canvas-video" />
       </HTMLContainer>
     );
   }
 
   indicator(shape: VideoShape) {
-    return <rect width={shape.props.w} height={shape.props.h} rx={12} ry={12} />;
+    const br = shape.props.borderRadius;
+    return <rect width={shape.props.w} height={shape.props.h} rx={br} ry={br} />;
   }
 
   override onDoubleClick = (shape: VideoShape) => {
@@ -95,4 +116,59 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
     };
     input.click();
   };
+}
+
+function FitControls({ shape }: { shape: VideoShape }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      style={{
+        position: "absolute", top: -36, left: 0, zIndex: 10,
+        display: "flex", gap: 2, pointerEvents: "all",
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            background: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
+            borderRadius: 6, padding: "2px 8px", fontSize: 11, cursor: "pointer",
+            color: "hsl(var(--foreground))", whiteSpace: "nowrap",
+          }}
+        >
+          {FIT_LABELS[shape.props.objectFit] || "Cover"} ▾
+        </button>
+      ) : (
+        <div style={{
+          display: "flex", gap: 2, background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border))", borderRadius: 6, padding: 2,
+        }}>
+          {FIT_MODES.map((mode) => (
+            <button
+              key={mode}
+              onClick={() => {
+                const editor = (window as any).__tldrawEditor;
+                if (editor) {
+                  editor.updateShape({
+                    id: shape.id, type: "canvas-video", props: { objectFit: mode },
+                  });
+                }
+                setOpen(false);
+              }}
+              style={{
+                padding: "2px 6px", fontSize: 11, borderRadius: 4, cursor: "pointer",
+                border: "none",
+                background: shape.props.objectFit === mode ? "hsl(var(--accent))" : "transparent",
+                color: "hsl(var(--foreground))",
+              }}
+            >
+              {FIT_LABELS[mode]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
