@@ -97,16 +97,13 @@ function CanvasInner() {
     setEditor(editor);
   }, []);
 
-  // Sync current tldraw page to connection context
+  // Sync current tldraw page to connection context via store listener
   useEffect(() => {
     if (!editor) return;
-    const updatePage = () => {
-      const pageId = editor.getCurrentPageId();
-      setCurrentPageId(pageId);
-    };
+    const updatePage = () => setCurrentPageId(editor.getCurrentPageId());
     updatePage();
-    const interval = setInterval(updatePage, 500);
-    return () => clearInterval(interval);
+    const unsub = editor.store.listen(updatePage);
+    return () => unsub();
   }, [editor, setCurrentPageId]);
 
   // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
