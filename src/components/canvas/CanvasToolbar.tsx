@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video } from "lucide-react";
+import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, ImageIcon, Film } from "lucide-react";
 import { Editor } from "tldraw";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
