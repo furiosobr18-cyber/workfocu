@@ -148,14 +148,14 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         title="Frame de Imagem"
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
       >
-        <ImageIcon className="w-4 h-4 text-blue-400" />
+        <ImageIcon className="w-4 h-4 text-primary" />
       </button>
       <button
         onClick={() => addShape("video-frame")}
         title="Frame de Vídeo"
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
       >
-        <Film className="w-4 h-4 text-purple-400" />
+        <Film className="w-4 h-4 text-accent-foreground" />
       </button>
     </div>
   );
