@@ -502,6 +502,30 @@ export default function TextPanel({ editor }: TextPanelProps) {
                 ))}
               </div>
             </Row>
+            <Row label="Contorno">
+              <div className="flex-1 flex items-center gap-2">
+                <Switch
+                  checked={outlineEnabled}
+                  onCheckedChange={setOutlineEnabled}
+                />
+                {outlineEnabled && (
+                  <>
+                    <input
+                      type="color"
+                      value={`#${outlineColor}`}
+                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                      className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
+                    />
+                    <Input
+                      value={outlineColor}
+                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                      className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
+                      maxLength={7}
+                    />
+                  </>
+                )}
+              </div>
+            </Row>
           </div>
         </ScrollArea>
       </div>
