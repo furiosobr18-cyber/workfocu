@@ -14,8 +14,11 @@ import { VideoShapeUtil } from "@/components/canvas/VideoShape";
 import CanvasToolbar from "@/components/canvas/CanvasToolbar";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
+import { ImageFrameTool } from "@/components/canvas/ImageFrameTool";
+import { VideoFrameTool } from "@/components/canvas/VideoFrameTool";
 
 const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
+const customTools = [ImageFrameTool, VideoFrameTool];
 
 function isTextLikeMime(fileType: string): boolean {
   const t = (fileType || "").toLowerCase();
@@ -215,6 +218,7 @@ function CanvasInner() {
         <div className="absolute inset-0 [&_.tlui-toolbar]:hidden [&_.tlui-style-panel]:hidden [&_.tlui-zoom-menu]:hidden [&_.tlui-navigation-zone]:hidden">
           <Tldraw
             shapeUtils={customShapeUtils}
+            tools={customTools}
             onMount={handleMount}
             hideUi={false}
           />
