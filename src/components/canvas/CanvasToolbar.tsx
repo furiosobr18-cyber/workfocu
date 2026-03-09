@@ -4,6 +4,50 @@ import { Editor } from "tldraw";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
+function SocialDrawer({ addShape }: { addShape: (type: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleEnter = () => {
+    clearTimeout(timeoutRef.current);
+    setOpen(true);
+  };
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 200);
+  };
+
+  const items = [
+    { type: "instagram", icon: Instagram, title: "Instagram", color: "text-pink-400" },
+    { type: "tiktok", icon: Music2, title: "TikTok", color: "text-cyan-400" },
+  ];
+
+  return (
+    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        onClick={() => addShape("youtube")}
+        title="YouTube"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Youtube className="w-4 h-4 text-destructive" />
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1 shadow-xl animate-fade-in">
+          {items.map(({ type, icon: Icon, title, color }) => (
+            <button
+              key={type}
+              onClick={() => { addShape(type); setOpen(false); }}
+              title={title}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+            >
+              <Icon className={`w-4 h-4 ${color}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface CanvasToolbarProps {
   editor: Editor | null;
 }
