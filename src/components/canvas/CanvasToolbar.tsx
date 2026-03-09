@@ -111,16 +111,24 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         <Youtube className="w-4 h-4 text-destructive" />
       </button>
       <button
-        onClick={() => addShape("canvas-image")}
-        title="Imagem"
-        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+        onClick={() => selectTool("image-frame")}
+        title="Imagem (Frame)"
+        className={`p-2 rounded-lg transition-colors ${
+          activeTool === "image-frame"
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+        }`}
       >
         <Image className="w-4 h-4" />
       </button>
       <button
-        onClick={() => addShape("canvas-video")}
-        title="Vídeo"
-        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+        onClick={() => selectTool("video-frame")}
+        title="Vídeo (Frame)"
+        className={`p-2 rounded-lg transition-colors ${
+          activeTool === "video-frame"
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+        }`}
       >
         <Video className="w-4 h-4" />
       </button>
