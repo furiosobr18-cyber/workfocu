@@ -56,23 +56,28 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
   const [category, setCategory] = useState<Category>("All");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
-  const [showManager, setShowManager] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Fetch custom fonts on mount and when user changes
   useEffect(() => {
     if (!user) return;
     fetchCustomFonts();
   }, [user]);
 
-  // Inject custom fonts CSS
+  // Inject custom fonts CSS whenever customFonts changes
   useEffect(() => {
     customFonts.forEach((f) => {
       const id = `cf-${f.id}`;
       if (document.getElementById(id)) return;
       const { data } = supabase.storage.from("custom-fonts").getPublicUrl(f.storage_path);
+      const ext = f.file_name.split(".").pop()?.toLowerCase() || "truetype";
+      const formatMap: Record<string, string> = {
+        ttf: "truetype", otf: "opentype", woff: "woff", woff2: "woff2",
+      };
+      const format = formatMap[ext] || "truetype";
       const style = document.createElement("style");
       style.id = id;
-      style.textContent = `@font-face { font-family: '${f.name}'; src: url('${data.publicUrl}') format('truetype'); }`;
+      style.textContent = `@font-face { font-family: '${f.name}'; src: url('${data.publicUrl}') format('${format}'); font-display: swap; }`;
       document.head.appendChild(style);
     });
   }, [customFonts]);
@@ -94,14 +99,31 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
     setUploading(true);
     const fontName = file.name.replace(/\.[^.]+$/, "");
     const storagePath = `${user.id}/${Date.now()}_${file.name}`;
-    const { error: uploadErr } = await supabase.storage.from("custom-fonts").upload(storagePath, file);
-    if (uploadErr) { toast.error("Erro ao fazer upload"); setUploading(false); return; }
+    
+    const { error: uploadErr } = await supabase.storage.from("custom-fonts").upload(storagePath, file, {
+      contentType: file.type || "font/ttf",
+    });
+    if (uploadErr) { 
+      console.error("Upload error:", uploadErr);
+      toast.error("Erro ao fazer upload: " + uploadErr.message); 
+      setUploading(false); 
+      return; 
+    }
+    
     const { error: dbErr } = await supabase.from("custom_fonts").insert({
       user_id: user.id, name: fontName, file_name: file.name, storage_path: storagePath,
     });
-    if (dbErr) { toast.error("Erro ao salvar fonte"); setUploading(false); return; }
+    if (dbErr) { 
+      console.error("DB error:", dbErr);
+      toast.error("Erro ao salvar fonte: " + dbErr.message); 
+      setUploading(false); 
+      return; 
+    }
+    
     toast.success(`Fonte "${fontName}" adicionada!`);
     await fetchCustomFonts();
+    // Auto-switch to Custom category so the user sees their new font
+    setCategory("Custom");
     setUploading(false);
     e.target.value = "";
   };
@@ -209,40 +231,37 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
           </div>
         </ScrollArea>
 
-        {/* Bottom: Gerenciar fontes or manager */}
-        {category === "Custom" || showManager ? (
-          <div className="border-t border-border p-3 flex flex-col gap-2">
-            {showManager || category === "Custom" ? (
-              <>
-                {customFonts.length > 0 && (
-                  <div className="flex flex-col gap-1 max-h-24 overflow-auto">
-                    {customFonts.map((f) => (
-                      <div key={f.id} className="flex items-center justify-between text-xs text-foreground">
-                        <span style={{ fontFamily: `'${f.name}', sans-serif` }}>{f.name}</span>
-                        <button onClick={() => handleDeleteFont(f)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <label className="cursor-pointer">
-                  <div className="flex items-center justify-center gap-2 bg-secondary hover:bg-accent rounded-lg py-2 text-xs text-foreground transition-colors">
-                    <Upload className="w-3.5 h-3.5" />
-                    {uploading ? "Enviando..." : "Upload de fonte (.ttf, .otf, .woff)"}
-                  </div>
-                  <input type="file" accept=".ttf,.otf,.woff,.woff2" className="hidden" onChange={handleUpload} disabled={uploading} />
-                </label>
-              </>
-            ) : null}
-          </div>
-        ) : (
-          <div className="border-t border-border p-3">
-            <Button variant="secondary" className="w-full text-xs" onClick={() => { setCategory("Custom"); setShowManager(true); }}>
+        {/* Bottom area */}
+        <div className="border-t border-border p-3 flex flex-col gap-2">
+          {category === "Custom" && (
+            <>
+              {customFonts.length > 0 && (
+                <div className="flex flex-col gap-1 max-h-24 overflow-auto">
+                  {customFonts.map((f) => (
+                    <div key={f.id} className="flex items-center justify-between text-xs text-foreground">
+                      <span style={{ fontFamily: `'${f.name}', sans-serif` }}>{f.name}</span>
+                      <button onClick={() => handleDeleteFont(f)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="cursor-pointer">
+                <div className="flex items-center justify-center gap-2 bg-secondary hover:bg-accent rounded-lg py-2 text-xs text-foreground transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploading ? "Enviando..." : "Upload de fonte (.ttf, .otf, .woff)"}
+                </div>
+                <input type="file" accept=".ttf,.otf,.woff,.woff2" className="hidden" onChange={handleUpload} disabled={uploading} />
+              </label>
+            </>
+          )}
+          {category !== "Custom" && (
+            <Button variant="secondary" className="w-full text-xs" onClick={() => setCategory("Custom")}>
               Gerenciar fontes
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
