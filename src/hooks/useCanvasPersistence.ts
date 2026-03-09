@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 const CACHE_KEY = "canvas_local_cache";
+const CLOUD_SAVE_DELAY = 2000;
+const LOCAL_SAVE_THROTTLE = 500;
 
 function saveToLocalCache(snapshot: any) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
   } catch {
-    // quota exceeded – ignore
+    // quota exceeded
   }
 }
 
@@ -17,9 +19,7 @@ function loadFromLocalCache(): any | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {
-    // ignore
-  }
+  } catch {}
   return null;
 }
 
@@ -28,19 +28,18 @@ export function useCanvasPersistence(editor: Editor | null) {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoadingRef = useRef(false);
 
   // Load from local cache IMMEDIATELY for zero-delay
   useEffect(() => {
     if (!editor) return;
     const cached = loadFromLocalCache();
-    if (cached && typeof cached === 'object' && 'store' in cached && 'schema' in cached) {
+    if (cached && typeof cached === "object" && "store" in cached && "schema" in cached) {
       try {
         editor.store.loadSnapshot(cached);
-      } catch {
-        // ignore invalid cache
-      }
+      } catch {}
     }
   }, [editor]);
 
@@ -50,11 +49,10 @@ export function useCanvasPersistence(editor: Editor | null) {
 
     const loadOrCreate = async () => {
       isLoadingRef.current = true;
-
       try {
         const { data: existing, error } = await supabase
           .from("canvas_documents")
-          .select("*")
+          .select("id, content, updated_at")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false })
           .limit(1)
@@ -62,11 +60,10 @@ export function useCanvasPersistence(editor: Editor | null) {
 
         if (existing && !error) {
           setDocumentId(existing.id);
-          
           if (existing.content) {
             try {
               const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
-              if (snapshot && typeof snapshot === 'object' && 'store' in snapshot && 'schema' in snapshot) {
+              if (snapshot && typeof snapshot === "object" && "store" in snapshot && "schema" in snapshot) {
                 editor.store.loadSnapshot(snapshot);
                 saveToLocalCache(snapshot);
               }
@@ -79,12 +76,8 @@ export function useCanvasPersistence(editor: Editor | null) {
           const serialized = JSON.parse(JSON.stringify(snapshot));
           const { data: newDoc, error: createError } = await supabase
             .from("canvas_documents")
-            .insert([{
-              user_id: user.id,
-              name: "Meu Canvas",
-              content: serialized,
-            }])
-            .select()
+            .insert([{ user_id: user.id, name: "Meu Canvas", content: serialized }])
+            .select("id")
             .single();
 
           if (newDoc && !createError) {
@@ -101,7 +94,6 @@ export function useCanvasPersistence(editor: Editor | null) {
     loadOrCreate();
   }, [user, editor]);
 
-  // Save to cloud
   const saveToCloud = useCallback(async () => {
     if (!editor || !documentId || !user || isLoadingRef.current) return;
 
@@ -109,8 +101,6 @@ export function useCanvasPersistence(editor: Editor | null) {
     try {
       const snapshot = editor.store.getSnapshot();
       const serialized = JSON.parse(JSON.stringify(snapshot));
-      
-      // Save to local cache immediately
       saveToLocalCache(serialized);
 
       const { error } = await supabase
@@ -119,9 +109,7 @@ export function useCanvasPersistence(editor: Editor | null) {
         .eq("id", documentId)
         .eq("user_id", user.id);
 
-      if (!error) {
-        setLastSaved(new Date());
-      }
+      if (!error) setLastSaved(new Date());
     } catch (e) {
       console.error("Error saving canvas:", e);
     } finally {
@@ -129,50 +117,38 @@ export function useCanvasPersistence(editor: Editor | null) {
     }
   }, [editor, documentId, user]);
 
-  // Debounced auto-save on changes
+  // Throttled local + debounced cloud save on changes
   useEffect(() => {
     if (!editor || !documentId) return;
 
     const unsub = editor.store.listen(() => {
       if (isLoadingRef.current) return;
 
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      // Throttled local cache save
+      if (!localSaveTimeoutRef.current) {
+        localSaveTimeoutRef.current = setTimeout(() => {
+          localSaveTimeoutRef.current = null;
+          try {
+            const snapshot = editor.store.getSnapshot();
+            saveToLocalCache(JSON.parse(JSON.stringify(snapshot)));
+          } catch {}
+        }, LOCAL_SAVE_THROTTLE);
       }
 
-      // Also save to local cache on each change for instant restore
-      try {
-        const snapshot = editor.store.getSnapshot();
-        saveToLocalCache(JSON.parse(JSON.stringify(snapshot)));
-      } catch {
-        // ignore
-      }
-
-      saveTimeoutRef.current = setTimeout(() => {
-        saveToCloud();
-      }, 1500);
+      // Debounced cloud save
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(saveToCloud, CLOUD_SAVE_DELAY);
     });
 
     return () => {
       unsub();
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (localSaveTimeoutRef.current) clearTimeout(localSaveTimeoutRef.current);
     };
   }, [editor, documentId, saveToCloud]);
 
-  const undo = useCallback(() => {
-    if (!editor) return;
-    editor.undo();
-  }, [editor]);
-
-  const redo = useCallback(() => {
-    if (!editor) return;
-    editor.redo();
-  }, [editor]);
-
-  const canUndo = editor?.getCanUndo() ?? false;
-  const canRedo = editor?.getCanRedo() ?? false;
+  const undo = useCallback(() => editor?.undo(), [editor]);
+  const redo = useCallback(() => editor?.redo(), [editor]);
 
   return {
     documentId,
@@ -180,8 +156,8 @@ export function useCanvasPersistence(editor: Editor | null) {
     lastSaved,
     undo,
     redo,
-    canUndo,
-    canRedo,
+    canUndo: editor?.getCanUndo() ?? false,
+    canRedo: editor?.getCanRedo() ?? false,
     saveNow: saveToCloud,
   };
 }

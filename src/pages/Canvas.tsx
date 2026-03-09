@@ -69,15 +69,24 @@ function CanvasInner() {
     saveNow 
   } = useCanvasPersistence(editor);
 
-  // Force re-render for undo/redo state
+  // Throttled re-render for undo/redo state (every 300ms max)
   const [, forceUpdate] = useState({});
   
   useEffect(() => {
     if (!editor) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     const unsub = editor.store.listen(() => {
-      forceUpdate({});
+      if (!timeout) {
+        timeout = setTimeout(() => {
+          timeout = null;
+          forceUpdate({});
+        }, 300);
+      }
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      if (timeout) clearTimeout(timeout);
+    };
   }, [editor]);
 
   useEffect(() => {
