@@ -205,6 +205,7 @@ const Notes = () => {
     }
     
     setNotes(data || []);
+    try { localStorage.setItem("notes_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const fetchNoteLinks = async () => {
