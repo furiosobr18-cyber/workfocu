@@ -138,6 +138,25 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
       >
         <MessageSquare className="w-4 h-4" />
       </button>
+
+      {/* Separator */}
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* Frame shapes */}
+      <button
+        onClick={() => addShape("image-frame")}
+        title="Frame de Imagem"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <ImageIcon className="w-4 h-4 text-blue-400" />
+      </button>
+      <button
+        onClick={() => addShape("video-frame")}
+        title="Frame de Vídeo"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Film className="w-4 h-4 text-purple-400" />
+      </button>
     </div>
   );
 };
