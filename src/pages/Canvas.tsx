@@ -15,7 +15,7 @@ import CanvasToolbar from "@/components/canvas/CanvasToolbar";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 
-const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil, ImageFrameShapeUtil, VideoFrameShapeUtil];
+const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
 
 function isTextLikeMime(fileType: string): boolean {
   const t = (fileType || "").toLowerCase();
