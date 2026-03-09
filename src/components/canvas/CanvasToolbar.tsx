@@ -97,6 +97,7 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     { id: "hand", icon: Hand, title: "Mover" },
     { id: "draw", icon: Pen, title: "Desenhar" },
     { id: "frame", icon: Frame, title: "Frame (Layout)" },
+    { id: "text", icon: Type, title: "Texto" },
   ];
 
   return (
