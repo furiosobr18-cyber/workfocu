@@ -120,6 +120,8 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const [lineUnit, setLineUnit] = useState<string>("Em");
   const [align, setAlign] = useState<string>("start");
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [outlineEnabled, setOutlineEnabled] = useState(false);
+  const [outlineColor, setOutlineColor] = useState("000000");
 
   const lastSyncedShapeId = useRef<string | null>(null);
   const sansOverrideFontRef = useRef<string>("Inter");
