@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useCanvasStore } from "@/hooks/useCanvasStore";
 import CanvasElementView from "./CanvasElement";
+import ConnectionOverlay from "./ConnectionOverlay";
 import { Lock, Unlock, Trash2, Copy, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
 
 interface InteractionState {
@@ -26,12 +27,15 @@ export default function CustomCanvas({ store, onChanged }: Props) {
   const interactionRef = useRef<InteractionState>({ mode: 'idle', startX: 0, startY: 0 });
   const spaceHeldRef = useRef(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId: string } | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   const {
     elements, selectedIds, tool, viewport, editingId, gridEnabled,
+    connections, linkingFrom,
     setSelectedIds, setTool, setViewport, setEditingId,
     addElement, updateElementSilent, updateElementProps,
     deleteElements, bringToFront, sendToBack, toggleLock, duplicateElements,
+    startLinking, completeLinking, cancelLinking, getConnectionsForElement,
     commitHistory, elRef, vpRef,
   } = store;
 
@@ -40,33 +44,43 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     return { x: (sx - vp.x) / vp.zoom, y: (sy - vp.y) / vp.zoom };
   }, [vpRef]);
 
+  // Track mouse position for linking wire
+  useEffect(() => {
+    if (!linkingFrom) { setMousePos(null); return; }
+    const handleMove = (e: PointerEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    };
+    const handleUp = () => { cancelLinking(); };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [linkingFrom, cancelLinking]);
+
   // Space key for pan mode
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
-        spaceHeldRef.current = true;
-        e.preventDefault();
-      }
+      if (e.code === 'Space' && !e.repeat) { spaceHeldRef.current = true; e.preventDefault(); }
     };
-    const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space') spaceHeldRef.current = false;
-    };
+    const up = (e: KeyboardEvent) => { if (e.code === 'Space') spaceHeldRef.current = false; };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
   }, []);
 
-  // Wheel zoom (native handler for preventDefault)
+  // Wheel zoom
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const vp = vpRef.current;
-
       if (e.ctrlKey || e.metaKey) {
-        // Zoom
         const delta = -e.deltaY * 0.002;
         const newZoom = Math.max(0.1, Math.min(5, vp.zoom * (1 + delta)));
         const rect = el.getBoundingClientRect();
@@ -74,26 +88,17 @@ export default function CustomCanvas({ store, onChanged }: Props) {
         const cy = e.clientY - rect.top;
         const worldX = (cx - vp.x) / vp.zoom;
         const worldY = (cy - vp.y) / vp.zoom;
-        setViewport({
-          x: cx - worldX * newZoom,
-          y: cy - worldY * newZoom,
-          zoom: newZoom,
-        });
+        setViewport({ x: cx - worldX * newZoom, y: cy - worldY * newZoom, zoom: newZoom });
       } else {
-        // Pan
-        setViewport({
-          ...vp,
-          x: vp.x - e.deltaX,
-          y: vp.y - e.deltaY,
-        });
+        setViewport({ ...vp, x: vp.x - e.deltaX, y: vp.y - e.deltaY });
       }
     };
-
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
   }, [setViewport, vpRef]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (linkingFrom) return; // Don't interact during linking
     setContextMenu(null);
     const container = containerRef.current;
     if (!container) return;
@@ -105,44 +110,39 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     const sy = e.clientY - rect.top;
 
     const target = e.target as HTMLElement;
+
+    // Don't intercept connection dots
+    if (target.getAttribute('data-connection-source') || target.getAttribute('data-connection-target')) return;
+
     const handleType = target.getAttribute('data-handle');
     const elementDiv = target.closest('[data-element-id]');
     const elementId = elementDiv?.getAttribute('data-element-id') || null;
 
-    // Resize handle
     if (handleType && elementId) {
       const el = elRef.current.find(e => e.id === elementId);
       if (el && !el.locked) {
         interactionRef.current = {
-          mode: 'resizing', startX: sx, startY: sy,
-          elementId, handle: handleType,
+          mode: 'resizing', startX: sx, startY: sy, elementId, handle: handleType,
           origEl: { x: el.x, y: el.y, w: el.width, h: el.height },
         };
       }
       return;
     }
 
-    // Pan mode (space held, hand tool, or middle button)
     if (spaceHeldRef.current || tool === 'hand' || e.button === 1) {
       const vp = vpRef.current;
-      interactionRef.current = {
-        mode: 'panning', startX: e.clientX, startY: e.clientY,
-        startVX: vp.x, startVY: vp.y,
-      };
+      interactionRef.current = { mode: 'panning', startX: e.clientX, startY: e.clientY, startVX: vp.x, startVY: vp.y };
       return;
     }
 
-    // Click on element with select tool
     if (elementId && tool === 'select') {
       const el = elRef.current.find(e => e.id === elementId);
       if (el) {
         if (!selectedIds.includes(elementId)) {
           setSelectedIds(e.shiftKey ? [...selectedIds, elementId] : [elementId]);
         }
-        if (!el.locked) {
-          interactionRef.current = {
-            mode: 'maybe-dragging', startX: sx, startY: sy, elementId,
-          };
+        if (!el.locked && el.type !== 'chat') {
+          interactionRef.current = { mode: 'maybe-dragging', startX: sx, startY: sy, elementId };
         } else {
           interactionRef.current = { mode: 'idle', startX: 0, startY: 0 };
         }
@@ -150,7 +150,6 @@ export default function CustomCanvas({ store, onChanged }: Props) {
       return;
     }
 
-    // Create element with text/shape tool
     if (tool === 'text' || tool === 'shape') {
       const world = screenToWorld(sx, sy);
       addElement(tool === 'text' ? 'text' : 'shape', world.x, world.y);
@@ -158,7 +157,6 @@ export default function CustomCanvas({ store, onChanged }: Props) {
       return;
     }
 
-    // Click on background → deselect
     if (!elementId) {
       setSelectedIds([]);
       setEditingId(null);
@@ -167,7 +165,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
         startVX: vpRef.current.x, startVY: vpRef.current.y,
       };
     }
-  }, [tool, selectedIds, setSelectedIds, setEditingId, addElement, screenToWorld, elRef, vpRef, onChanged]);
+  }, [tool, selectedIds, linkingFrom, setSelectedIds, setEditingId, addElement, screenToWorld, elRef, vpRef, onChanged]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const ix = interactionRef.current;
@@ -181,11 +179,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     if (ix.mode === 'panning') {
       const dx = e.clientX - ix.startX;
       const dy = e.clientY - ix.startY;
-      setViewport({
-        ...vpRef.current,
-        x: (ix.startVX ?? 0) + dx,
-        y: (ix.startVY ?? 0) + dy,
-      });
+      setViewport({ ...vpRef.current, x: (ix.startVX ?? 0) + dx, y: (ix.startVY ?? 0) + dy });
       return;
     }
 
@@ -205,10 +199,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
 
     if (ix.mode === 'dragging' && ix.elementId) {
       const world = screenToWorld(sx, sy);
-      updateElementSilent(ix.elementId, {
-        x: world.x + (ix.offsetX ?? 0),
-        y: world.y + (ix.offsetY ?? 0),
-      });
+      updateElementSilent(ix.elementId, { x: world.x + (ix.offsetX ?? 0), y: world.y + (ix.offsetY ?? 0) });
       return;
     }
 
@@ -243,14 +234,12 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     const elementDiv = target.closest('[data-element-id]');
     const elementId = elementDiv?.getAttribute('data-element-id');
     if (!elementId) return;
-
     const el = elRef.current.find(e => e.id === elementId);
     if (!el) return;
 
     if (el.type === 'text') {
       setEditingId(elementId);
     } else if (el.type === 'image' || el.type === 'video') {
-      // File upload
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = el.type === 'image' ? 'image/*' : 'video/*';
@@ -258,19 +247,13 @@ export default function CustomCanvas({ store, onChanged }: Props) {
         const file = input.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => {
-          updateElementProps(elementId, { src: reader.result as string, name: file.name });
-          onChanged?.();
-        };
+        reader.onload = () => { updateElementProps(elementId, { src: reader.result as string, name: file.name }); onChanged?.(); };
         reader.readAsDataURL(file);
       };
       input.click();
     } else if (el.type === 'youtube') {
       const url = prompt('URL do YouTube:', el.props.url || '');
-      if (url !== null) {
-        updateElementProps(elementId, { url });
-        onChanged?.();
-      }
+      if (url !== null) { updateElementProps(elementId, { url }); onChanged?.(); }
     } else if (el.type === 'file') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -278,10 +261,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
         const file = input.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => {
-          updateElementProps(elementId, { src: reader.result as string, name: file.name, fileType: file.type });
-          onChanged?.();
-        };
+        reader.onload = () => { updateElementProps(elementId, { src: reader.result as string, name: file.name, fileType: file.type }); onChanged?.(); };
         reader.readAsDataURL(file);
       };
       input.click();
@@ -299,41 +279,17 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     }
   }, [setSelectedIds]);
 
-  // Keyboard shortcuts
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (editingId) return; // Don't intercept when editing text
-
+    if (editingId) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (selectedIds.length > 0) {
-        deleteElements(selectedIds);
-        onChanged?.();
-      }
+      if (selectedIds.length > 0) { deleteElements(selectedIds); onChanged?.(); }
     }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      store.undo();
-    }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-      e.preventDefault();
-      store.redo();
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-      e.preventDefault();
-      setSelectedIds(elements.map(e => e.id));
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-      e.preventDefault();
-      if (selectedIds.length > 0) {
-        duplicateElements(selectedIds);
-        onChanged?.();
-      }
-    }
-    if (e.key === 'Escape') {
-      setSelectedIds([]);
-      setEditingId(null);
-      setTool('select');
-    }
-  }, [editingId, selectedIds, elements, deleteElements, setSelectedIds, setEditingId, setTool, duplicateElements, store, onChanged]);
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); setSelectedIds(elements.map(e => e.id)); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); if (selectedIds.length > 0) { duplicateElements(selectedIds); onChanged?.(); } }
+    if (e.key === 'Escape') { setSelectedIds([]); setEditingId(null); setTool('select'); cancelLinking(); }
+  }, [editingId, selectedIds, elements, deleteElements, setSelectedIds, setEditingId, setTool, duplicateElements, store, onChanged, cancelLinking]);
 
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
   const { x: vx, y: vy, zoom } = viewport;
@@ -346,13 +302,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
     backgroundPosition: `${vx % scaledGrid}px ${vy % scaledGrid}px`,
   } : {};
 
-  const cursorMap: Record<string, string> = {
-    select: 'default',
-    hand: 'grab',
-    text: 'text',
-    shape: 'crosshair',
-  };
-
+  const cursorMap: Record<string, string> = { select: 'default', hand: 'grab', text: 'text', shape: 'crosshair' };
   const contextEl = contextMenu ? elRef.current.find(e => e.id === contextMenu.elementId) : null;
 
   return (
@@ -361,7 +311,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
       className="w-full h-full relative overflow-hidden outline-none bg-background"
       tabIndex={0}
       style={{
-        cursor: spaceHeldRef.current ? 'grab' : (interactionRef.current.mode === 'panning' ? 'grabbing' : cursorMap[tool] || 'default'),
+        cursor: linkingFrom ? 'crosshair' : (spaceHeldRef.current ? 'grab' : cursorMap[tool] || 'default'),
         ...gridStyle,
       }}
       onPointerDown={handlePointerDown}
@@ -372,15 +322,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
       onKeyDown={handleKeyDown}
     >
       {/* World container */}
-      <div
-        style={{
-          transform: `translate(${vx}px, ${vy}px) scale(${zoom})`,
-          transformOrigin: '0 0',
-          position: 'absolute',
-          left: 0,
-          top: 0,
-        }}
-      >
+      <div style={{ transform: `translate(${vx}px, ${vy}px) scale(${zoom})`, transformOrigin: '0 0', position: 'absolute', left: 0, top: 0 }}>
         {sorted.map(el => (
           <CanvasElementView
             key={el.id}
@@ -388,18 +330,37 @@ export default function CustomCanvas({ store, onChanged }: Props) {
             isSelected={selectedIds.includes(el.id)}
             isEditing={editingId === el.id}
             zoom={zoom}
+            connections={getConnectionsForElement(el.id)}
+            allElements={elements}
+            isLinking={!!linkingFrom}
             onUpdateProps={(props) => { updateElementProps(el.id, props); onChanged?.(); }}
             onStopEditing={() => setEditingId(null)}
+            onStartLinking={startLinking}
+            onCompleteLinking={completeLinking}
+            onChanged={onChanged}
           />
         ))}
       </div>
+
+      {/* Connection overlay */}
+      <ConnectionOverlay store={store} mousePos={mousePos} />
+
+      {/* Linking banner */}
+      {linkingFrom && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[600] bg-card/95 backdrop-blur-xl text-foreground px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-2xl border border-border animate-in fade-in-0">
+          <span className="animate-pulse">🔗</span>
+          Arraste até a bolinha do Chat para conectar
+          <button onClick={cancelLinking} className="ml-2 bg-accent hover:bg-accent/80 rounded-lg px-2 py-0.5 text-xs text-muted-foreground">
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {/* Context menu */}
       {contextMenu && contextEl && (
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setContextMenu(null)} />
-          <div
-            className="fixed z-[999] bg-card border border-border rounded-xl shadow-2xl py-1.5 min-w-[180px] animate-in fade-in-0 zoom-in-95"
+          <div className="fixed z-[999] bg-card border border-border rounded-xl shadow-2xl py-1.5 min-w-[180px] animate-in fade-in-0 zoom-in-95"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <CtxButton onClick={() => { toggleLock([contextMenu.elementId]); setContextMenu(null); onChanged?.(); }}>
@@ -438,14 +399,7 @@ export default function CustomCanvas({ store, onChanged }: Props) {
 
 function CtxButton({ onClick, children, danger }: { onClick: () => void; children: React.ReactNode; danger?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
-        danger
-          ? 'text-destructive hover:bg-destructive/10'
-          : 'text-foreground hover:bg-accent'
-      }`}
-    >
+    <button onClick={onClick} className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${danger ? 'text-destructive hover:bg-destructive/10' : 'text-foreground hover:bg-accent'}`}>
       {children}
     </button>
   );

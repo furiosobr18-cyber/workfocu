@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 
-export type ElementType = 'text' | 'image' | 'video' | 'youtube' | 'shape' | 'file';
+export type ElementType = 'text' | 'image' | 'video' | 'youtube' | 'shape' | 'file' | 'chat';
 export type ToolType = 'select' | 'text' | 'shape' | 'hand';
 
 export interface CanvasElement {
@@ -16,9 +16,16 @@ export interface CanvasElement {
   props: Record<string, any>;
 }
 
+export interface CanvasConnection {
+  id: string;
+  sourceId: string;
+  targetId: string;
+}
+
 export interface CanvasSnapshot {
   version: 2;
   elements: CanvasElement[];
+  connections?: CanvasConnection[];
 }
 
 const MAX_HISTORY = 80;
@@ -36,6 +43,11 @@ export function useCanvasStore() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [gridEnabled, setGridEnabled] = useState(true);
 
+  // Connections
+  const [connections, _setConnections] = useState<CanvasConnection[]>([]);
+  const [linkingFrom, setLinkingFrom] = useState<string | null>(null);
+  const connectionsRef = useRef<CanvasConnection[]>([]);
+
   const elRef = useRef<CanvasElement[]>([]);
   const vpRef = useRef({ x: 0, y: 0, zoom: 1 });
   const historyRef = useRef<string[]>([JSON.stringify([])]);
@@ -44,6 +56,11 @@ export function useCanvasStore() {
   const setElements = useCallback((els: CanvasElement[]) => {
     elRef.current = els;
     _setElements(els);
+  }, []);
+
+  const setConnections = useCallback((conns: CanvasConnection[]) => {
+    connectionsRef.current = conns;
+    _setConnections(conns);
   }, []);
 
   const setViewport = useCallback((vp: { x: number; y: number; zoom: number }) => {
@@ -96,6 +113,7 @@ export function useCanvasStore() {
       youtube: { w: 480, h: 270, props: { url: '' } },
       shape: { w: 160, h: 160, props: { shapeType: 'rect', fill: '#3b82f6', stroke: '#1d4ed8', strokeWidth: 2, borderRadius: 12 } },
       file: { w: 240, h: 64, props: { src: '', name: 'Arquivo', fileType: '' } },
+      chat: { w: 380, h: 480, props: { messages: '[]', memory: '', model: 'llama-3.3-70b-versatile' } },
     };
     const d = defaults[type];
     const el: CanvasElement = {
@@ -126,11 +144,19 @@ export function useCanvasStore() {
     commit(newEls);
   }, [commit]);
 
+  // Silent props update (no history push) - for chat messages during streaming
+  const updateElementPropsSilent = useCallback((id: string, propChanges: Record<string, any>) => {
+    const newEls = elRef.current.map(el => el.id === id ? { ...el, props: { ...el.props, ...propChanges } } : el);
+    updateSilent(newEls);
+  }, [updateSilent]);
+
   const deleteElements = useCallback((ids: string[]) => {
     const set = new Set(ids);
     commit(elRef.current.filter(el => !set.has(el.id)));
     setSelectedIds(prev => prev.filter(id => !set.has(id)));
-  }, [commit]);
+    // Remove connections involving deleted elements
+    setConnections(connectionsRef.current.filter(c => !set.has(c.sourceId) && !set.has(c.targetId)));
+  }, [commit, setConnections]);
 
   const bringToFront = useCallback((ids: string[]) => {
     const set = new Set(ids);
@@ -164,9 +190,44 @@ export function useCanvasStore() {
     setSelectedIds(dupes.map(d => d.id));
   }, [commit]);
 
+  // Connection methods
+  const startLinking = useCallback((sourceId: string) => {
+    setLinkingFrom(sourceId);
+  }, []);
+
+  const completeLinking = useCallback((targetId: string) => {
+    if (!linkingFrom || linkingFrom === targetId) {
+      setLinkingFrom(null);
+      return;
+    }
+    const exists = connectionsRef.current.some(c => c.sourceId === linkingFrom && c.targetId === targetId);
+    if (!exists) {
+      const newConn: CanvasConnection = {
+        id: `${linkingFrom}-${targetId}`,
+        sourceId: linkingFrom,
+        targetId,
+      };
+      setConnections([...connectionsRef.current, newConn]);
+    }
+    setLinkingFrom(null);
+  }, [linkingFrom, setConnections]);
+
+  const cancelLinking = useCallback(() => {
+    setLinkingFrom(null);
+  }, []);
+
+  const removeConnection = useCallback((connId: string) => {
+    setConnections(connectionsRef.current.filter(c => c.id !== connId));
+  }, [setConnections]);
+
+  const getConnectionsForElement = useCallback((elementId: string) => {
+    return connectionsRef.current.filter(c => c.targetId === elementId);
+  }, []);
+
   const getSnapshot = useCallback((): CanvasSnapshot => ({
     version: 2,
     elements: elRef.current,
+    connections: connectionsRef.current,
   }), []);
 
   const loadSnapshot = useCallback((snap: any) => {
@@ -174,22 +235,25 @@ export function useCanvasStore() {
       const maxZ = snap.elements.length > 0 ? Math.max(...snap.elements.map((e: CanvasElement) => e.zIndex)) : 0;
       _zCounter = maxZ + 1;
       setElements(snap.elements);
+      setConnections(Array.isArray(snap.connections) ? snap.connections : []);
       historyRef.current = [JSON.stringify(snap.elements)];
       historyIdxRef.current = 0;
       setSelectedIds([]);
       setEditingId(null);
     }
-  }, [setElements]);
+  }, [setElements, setConnections]);
 
   return {
     elements, selectedIds, tool, viewport, editingId, gridEnabled,
+    connections, linkingFrom,
     setSelectedIds, setTool, setViewport, setEditingId, setGridEnabled,
-    addElement, updateElementSilent, updateElementProps,
+    addElement, updateElementSilent, updateElementProps, updateElementPropsSilent,
     deleteElements, bringToFront, sendToBack, toggleLock, duplicateElements,
+    startLinking, completeLinking, cancelLinking, removeConnection, getConnectionsForElement,
     undo, redo, commitHistory,
     get canUndo() { return historyIdxRef.current > 0; },
     get canRedo() { return historyIdxRef.current < historyRef.current.length - 1; },
     getSnapshot, loadSnapshot,
-    elRef, vpRef,
+    elRef, vpRef, connectionsRef,
   };
 }
