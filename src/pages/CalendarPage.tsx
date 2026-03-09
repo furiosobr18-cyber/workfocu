@@ -62,6 +62,7 @@ const CalendarPage = () => {
     }
     
     setEvents(data || []);
+    try { localStorage.setItem("calendar_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const createEvent = async (e: React.FormEvent) => {

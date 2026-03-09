@@ -58,6 +58,7 @@ const Tasks = () => {
     }
     
     setTasks(data || []);
+    try { localStorage.setItem("tasks_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const createTask = async (e: React.FormEvent) => {

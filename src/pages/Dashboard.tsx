@@ -91,16 +91,21 @@ const Dashboard = () => {
         .limit(5)
     ]);
 
-    setStats({
+    const newStats = {
       pendingTasks: pendingResult.count || 0,
       completedToday: completedResult.count || 0,
       pomodoroSessions: pomodoroResult.count || 0,
       notesCount: notesResult.count || 0
-    });
+    };
+    const newEvents = eventsResult.data || [];
+    const newTasks = tasksResult.data || [];
     
-    setTodayEvents(eventsResult.data || []);
-    setRecentTasks(tasksResult.data || []);
+    setStats(newStats);
+    setTodayEvents(newEvents);
+    setRecentTasks(newTasks);
     setIsLoading(false);
+    
+    try { localStorage.setItem("dash_cache", JSON.stringify({ stats: newStats, todayEvents: newEvents, recentTasks: newTasks })); } catch {}
   };
 
   // Format current date in Portuguese

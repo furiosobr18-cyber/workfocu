@@ -217,6 +217,7 @@ const Notes = () => {
       .eq('user_id', user.id);
     
     setNoteLinks(data || []);
+    try { localStorage.setItem("notelinks_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const createNote = async () => {
