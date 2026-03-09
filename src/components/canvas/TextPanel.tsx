@@ -90,6 +90,18 @@ function getNearestTldrawColorName(hex: string): keyof typeof TLDRAW_COLORS {
   return bestName;
 }
 
+function getFontFormatFromUrl(fontUrl: string) {
+  try {
+    const pathname = new URL(fontUrl).pathname.toLowerCase();
+    if (pathname.endsWith(".woff2")) return "woff2";
+    if (pathname.endsWith(".woff")) return "woff";
+    if (pathname.endsWith(".otf")) return "opentype";
+    return "truetype";
+  } catch {
+    return "truetype";
+  }
+}
+
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
   const [fontFamily, setFontFamily] = useState("Inter");
