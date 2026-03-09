@@ -102,6 +102,10 @@ function getFontFormatFromUrl(fontUrl: string) {
   }
 }
 
+function escapeFontFamilyName(fontName: string) {
+  return fontName.replace(/'/g, "\\'");
+}
+
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
   const [fontFamily, setFontFamily] = useState("Inter");
