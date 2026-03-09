@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { YouTubeShapeUtil } from "@/components/canvas/YouTubeShape";
+import { TikTokShapeUtil } from "@/components/canvas/TikTokShape";
+import { InstagramShapeUtil } from "@/components/canvas/InstagramShape";
 import { ImageShapeUtil } from "@/components/canvas/ImageShape";
 import { FileShapeUtil } from "@/components/canvas/FileShape";
 import { ChatShapeUtil } from "@/components/canvas/ChatShape";
@@ -17,7 +19,7 @@ import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 import { ImageFrameTool } from "@/components/canvas/ImageFrameTool";
 import { VideoFrameTool } from "@/components/canvas/VideoFrameTool";
 
-const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
+const customShapeUtils = [YouTubeShapeUtil, TikTokShapeUtil, InstagramShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
 const customTools = [ImageFrameTool, VideoFrameTool];
 
 function isTextLikeMime(fileType: string): boolean {
@@ -146,9 +148,9 @@ function CanvasInner() {
       const shapeData: Record<string, any> = {};
 
       for (const shape of shapes) {
-        if (shape.type === "youtube") {
+        if (shape.type === "youtube" || shape.type === "tiktok" || shape.type === "instagram") {
           const url = (shape.props as any).url || "";
-          shapeData[shape.id] = { type: "youtube", url };
+          shapeData[shape.id] = { type: shape.type, url };
         } else if (shape.type === "canvas-image") {
           const name = (shape.props as any).name || "imagem";
           const src = (shape.props as any).src || "";
