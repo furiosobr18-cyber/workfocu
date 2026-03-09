@@ -238,12 +238,44 @@ export default function TextPanel({ editor }: TextPanelProps) {
     };
   }, [applySansFamilyOverride, applyUploadedSansOverride]);
 
+  // Outline CSS injection
+  useEffect(() => {
+    const styleId = "tldraw-text-outline-override";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    if (outlineEnabled) {
+      const { r, g, b } = hexToRgb(outlineColor);
+      styleEl.textContent = `
+        .tl-container {
+          --tl-text-outline:
+            0 var(--b) 0 rgb(${r},${g},${b}),
+            0 var(--a) 0 rgb(${r},${g},${b}),
+            var(--b) var(--b) 0 rgb(${r},${g},${b}),
+            var(--a) var(--b) 0 rgb(${r},${g},${b}),
+            var(--a) var(--a) 0 rgb(${r},${g},${b}),
+            var(--b) var(--a) 0 rgb(${r},${g},${b}) !important;
+        }
+      `;
+    } else {
+      styleEl.textContent = `.tl-container { --tl-text-outline: none !important; }`;
+    }
+
+    return () => {
+      // Keep the style element around, don't remove on unmount
+    };
+  }, [outlineEnabled, outlineColor]);
+
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
 
     const currentTool = editor.getCurrentToolId();
     const shapes = editor.getSelectedShapes();
-    const textShape = shapes.find((s) => s.type === "text" || s.type === "geo");
+    const textShape = shapes.find((s) => s.type === "text");
 
     if (currentTool === "text" || textShape) {
       setVisible(true);
