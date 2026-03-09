@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Editor, DefaultColorStyle, DefaultFontStyle, DefaultSizeStyle } from "tldraw";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type, Square } from "lucide-react";
 import FontPicker from "./FontPicker";
 
 interface TextPanelProps {
