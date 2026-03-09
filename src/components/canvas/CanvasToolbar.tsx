@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, ImageIcon, Film } from "lucide-react";
+import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video } from "lucide-react";
 import { Editor } from "tldraw";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
@@ -137,25 +137,6 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
       >
         <MessageSquare className="w-4 h-4" />
-      </button>
-
-      {/* Separator */}
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {/* Frame shapes */}
-      <button
-        onClick={() => addShape("image-frame")}
-        title="Frame de Imagem"
-        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-      >
-        <ImageIcon className="w-4 h-4 text-primary" />
-      </button>
-      <button
-        onClick={() => addShape("video-frame")}
-        title="Frame de Vídeo"
-        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-      >
-        <Film className="w-4 h-4 text-accent-foreground" />
       </button>
     </div>
   );
