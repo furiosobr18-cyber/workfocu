@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Editor } from "tldraw";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,6 +14,24 @@ const WEIGHT_LABELS: Record<number, string> = {
   500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
 };
 
+// tldraw color names mapped to hex
+const TLDRAW_COLORS: Record<string, string> = {
+  black: "000000", blue: "4263eb", green: "099268", grey: "adb5bd",
+  "light-blue": "4dabf7", "light-green": "40c057", "light-red": "ff8787",
+  "light-violet": "b197fc", orange: "f76707", red: "e03131",
+  violet: "7048e8", white: "ffffff", yellow: "ffc078",
+};
+const HEX_TO_TLDRAW: Record<string, string> = {};
+Object.entries(TLDRAW_COLORS).forEach(([name, hex]) => { HEX_TO_TLDRAW[hex] = name; });
+
+const FONT_TO_TLDRAW: Record<string, string> = {
+  "Inter": "sans", "Arial": "sans", "Helvetica": "sans", "Roboto": "sans",
+  "Georgia": "serif", "Times New Roman": "serif", "Palatino": "serif", "Merriweather": "serif",
+  "JetBrains Mono": "mono", "Fira Code": "mono", "Source Code Pro": "mono", "Courier New": "mono",
+  "Comic Sans MS": "draw",
+};
+const TLDRAW_TO_FONT: Record<string, string> = { sans: "Inter", serif: "Georgia", mono: "JetBrains Mono", draw: "Comic Sans MS" };
+
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
   const [fontFamily, setFontFamily] = useState("Inter");
@@ -27,11 +45,20 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const [lineUnit, setLineUnit] = useState<string>("Em");
   const [align, setAlign] = useState<string>("start");
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  
+  // Track which shape we last synced from, to avoid overwriting user edits
+  const lastSyncedShapeId = useRef<string | null>(null);
+  const skipNextSync = useRef(false);
 
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
     
-    // Show panel when text tool is active OR when a text shape is selected
+    // If we just made a change, skip this sync cycle
+    if (skipNextSync.current) {
+      skipNextSync.current = false;
+      return;
+    }
+    
     const currentTool = editor.getCurrentToolId();
     const shapes = editor.getSelectedShapes();
     const textShape = shapes.find((s) => s.type === "text" || s.type === "geo");
@@ -43,17 +70,20 @@ export default function TextPanel({ editor }: TextPanelProps) {
       return;
     }
 
-    if (textShape) {
+    // Only sync props when a DIFFERENT shape is selected
+    if (textShape && textShape.id !== lastSyncedShapeId.current) {
+      lastSyncedShapeId.current = textShape.id;
       const props = textShape.props as any;
       if (props.font) {
-        const fontMap: Record<string, string> = { sans: "Inter", serif: "Georgia", mono: "JetBrains Mono", draw: "Comic Sans MS" };
-        setFontFamily(fontMap[props.font] || props.font);
+        setFontFamily(TLDRAW_TO_FONT[props.font] || "Inter");
       }
       if (props.size) {
         const sizeMap: Record<string, number> = { s: 12, m: 16, l: 24, xl: 36 };
         setFontSize(sizeMap[props.size] || 16);
       }
-      if (props.color) setColor(props.color === "black" ? "000000" : props.color.replace("#", ""));
+      if (props.color) {
+        setColor(TLDRAW_COLORS[props.color] || "000000");
+      }
       if (props.align) setAlign(props.align);
     }
   }, [editor]);
@@ -67,6 +97,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const updateProp = (key: string, value: any) => {
     if (!editor) return;
+    skipNextSync.current = true;
     const shapes = editor.getSelectedShapes().filter((s) => s.type === "text" || s.type === "geo");
     shapes.forEach((shape) => {
       editor.updateShape({ id: shape.id, type: shape.type, props: { [key]: value } });
@@ -75,14 +106,16 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const handleFontSelect = (font: string) => {
     setFontFamily(font);
-    const reverseMap: Record<string, string> = {
-      "Inter": "sans", "Arial": "sans", "Helvetica": "sans",
-      "Georgia": "serif", "Times New Roman": "serif", "Palatino": "serif",
-      "JetBrains Mono": "mono", "Fira Code": "mono", "Source Code Pro": "mono", "Courier New": "mono",
-      "Comic Sans MS": "draw",
-    };
-    updateProp("font", reverseMap[font] || "sans");
+    const tldrawFont = FONT_TO_TLDRAW[font] || "sans";
+    updateProp("font", tldrawFont);
     setFontPickerOpen(false);
+  };
+
+  const handleColorChange = (hex: string) => {
+    setColor(hex);
+    // Find closest tldraw color
+    const tldrawColor = HEX_TO_TLDRAW[hex.toLowerCase()] || "black";
+    updateProp("color", tldrawColor);
   };
 
   const handleAlignChange = (a: string) => {
@@ -112,7 +145,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
       <div className="absolute top-0 right-0 bottom-0 w-[260px] z-[500] bg-card border-l border-border flex flex-col shadow-xl">
         <ScrollArea className="flex-1">
           <div className="p-4 flex flex-col gap-4">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-foreground">Texto</span>
               <button className="text-muted-foreground hover:text-foreground">
@@ -120,7 +152,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </button>
             </div>
 
-            {/* Estilos */}
             <Row label="Estilos">
               <div className="flex items-center gap-1.5 flex-1">
                 <div className="w-7 h-7 rounded bg-secondary flex items-center justify-center text-foreground">
@@ -130,7 +161,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </div>
             </Row>
 
-            {/* Fonte */}
             <Row label="Fonte">
               <button
                 onClick={() => setFontPickerOpen(true)}
@@ -141,7 +171,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </button>
             </Row>
 
-            {/* Peso */}
             <Row label="Peso">
               <div className="flex-1 flex items-center gap-1">
                 <select
@@ -156,28 +185,23 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </div>
             </Row>
 
-            {/* Cor */}
             <Row label="Cor">
               <div className="flex-1 flex items-center gap-2">
                 <input
                   type="color"
                   value={`#${color}`}
-                  onChange={(e) => {
-                    const c = e.target.value.replace("#", "");
-                    setColor(c);
-                  }}
+                  onChange={(e) => handleColorChange(e.target.value.replace("#", ""))}
                   className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
                 />
                 <Input
                   value={color}
-                  onChange={(e) => setColor(e.target.value.replace("#", "").slice(0, 6))}
+                  onChange={(e) => handleColorChange(e.target.value.replace("#", "").slice(0, 6))}
                   className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
                   maxLength={6}
                 />
               </div>
             </Row>
 
-            {/* Tamanho */}
             <Row label="Tamanho" icon>
               <div className="flex-1 flex items-center gap-1">
                 <Input
@@ -191,7 +215,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </div>
             </Row>
 
-            {/* Carta (Letter Spacing) */}
             <Row label="Carta">
               <div className="flex-1 flex items-center gap-1">
                 <Input
@@ -205,7 +228,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </div>
             </Row>
 
-            {/* Linha (Line Height) */}
             <Row label="Linha">
               <div className="flex-1 flex items-center gap-1">
                 <Input
@@ -219,7 +241,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
               </div>
             </Row>
 
-            {/* Alinhar */}
             <Row label="Alinhar">
               <div className="flex-1 flex items-center gap-0.5">
                 {alignButtons.map(({ value, icon: Icon }) => (
