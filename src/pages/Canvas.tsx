@@ -294,7 +294,7 @@ function CanvasInner() {
                 </>
               ) : lastSaved ? (
                 <>
-                  <Cloud className="w-3.5 h-3.5 text-green-500" />
+                  <Cloud className="w-3.5 h-3.5 text-success" />
                   <span className="text-xs text-muted-foreground">Salvo</span>
                 </>
               ) : (
@@ -303,9 +303,8 @@ function CanvasInner() {
                   <span className="text-xs text-muted-foreground">-</span>
                 </>
               )}
+            </div>
           </div>
-
-          {/* Linking mode banner */}
           {linkingFrom && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-muted/90 text-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in border border-border">
               <span className="animate-pulse">🔗</span>
