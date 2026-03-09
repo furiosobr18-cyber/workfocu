@@ -269,14 +269,14 @@ export default function TextPanel({ editor }: TextPanelProps) {
     return () => unsub();
   }, [editor, syncFromEditor]);
 
-  const handleFontSelect = async (font: string, customFontUrl?: string) => {
+  const handleFontSelect = (font: string, customFontUrl?: string) => {
     if (!editor) return;
 
     setFontFamily(font);
     const mappedFont = FONT_TO_TLDRAW[font] ?? "sans";
 
     if (customFontUrl) {
-      await applyTldrawSansOverride(font, customFontUrl);
+      void applyTldrawSansOverride(font, customFontUrl);
     } else {
       clearTldrawSansOverride();
     }
