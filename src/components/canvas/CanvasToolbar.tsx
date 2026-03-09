@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram } from "lucide-react";
+import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram, Type } from "lucide-react";
 import { Editor } from "tldraw";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
@@ -97,6 +97,7 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     { id: "hand", icon: Hand, title: "Mover" },
     { id: "draw", icon: Pen, title: "Desenhar" },
     { id: "frame", icon: Frame, title: "Frame (Layout)" },
+    { id: "text", icon: Type, title: "Texto" },
   ];
 
   return (
