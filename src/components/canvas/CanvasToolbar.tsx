@@ -187,7 +187,11 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
-      {/* Grid */}
+      {/* Separator */}
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* Layer ordering */}
+      <LayerDrawer editor={editor} />
       <button
         onClick={() => editor.updateInstanceState({ isGridMode: !editor.getInstanceState().isGridMode })}
         title="Grid"
