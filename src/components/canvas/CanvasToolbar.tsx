@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video } from "lucide-react";
+import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram } from "lucide-react";
 import { Editor } from "tldraw";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
 interface CanvasToolbarProps {
