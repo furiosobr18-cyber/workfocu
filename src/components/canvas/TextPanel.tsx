@@ -278,16 +278,23 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
 
-    const currentTool = editor.getCurrentToolId();
-    const shapes = editor.getSelectedShapes();
-    const textShape = shapes.find((s) => s.type === "text");
-
-    if (currentTool === "text" || textShape) {
-      setVisible(true);
+    // Only show panel when actively editing a text shape (cursor visible)
+    const editingShapeId = editor.getEditingShapeId();
+    if (editingShapeId) {
+      const editingShape = editor.getShape(editingShapeId);
+      if (editingShape && editingShape.type === "text") {
+        setVisible(true);
+      } else {
+        setVisible(false);
+        return;
+      }
     } else {
       setVisible(false);
       return;
     }
+
+    const shapes = editor.getSelectedShapes();
+    const textShape = shapes.find((s) => s.type === "text");
 
     if (textShape && textShape.id !== lastSyncedShapeId.current) {
       lastSyncedShapeId.current = textShape.id;

@@ -69,15 +69,24 @@ function CanvasInner() {
     saveNow 
   } = useCanvasPersistence(editor);
 
-  // Force re-render for undo/redo state
+  // Throttled re-render for undo/redo state (every 300ms max)
   const [, forceUpdate] = useState({});
   
   useEffect(() => {
     if (!editor) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     const unsub = editor.store.listen(() => {
-      forceUpdate({});
+      if (!timeout) {
+        timeout = setTimeout(() => {
+          timeout = null;
+          forceUpdate({});
+        }, 300);
+      }
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      if (timeout) clearTimeout(timeout);
+    };
   }, [editor]);
 
   useEffect(() => {
@@ -88,16 +97,13 @@ function CanvasInner() {
     setEditor(editor);
   }, []);
 
-  // Sync current tldraw page to connection context
+  // Sync current tldraw page to connection context via store listener
   useEffect(() => {
     if (!editor) return;
-    const updatePage = () => {
-      const pageId = editor.getCurrentPageId();
-      setCurrentPageId(pageId);
-    };
+    const updatePage = () => setCurrentPageId(editor.getCurrentPageId());
     updatePage();
-    const interval = setInterval(updatePage, 500);
-    return () => clearInterval(interval);
+    const unsub = editor.store.listen(updatePage);
+    return () => unsub();
   }, [editor, setCurrentPageId]);
 
   // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
@@ -160,7 +166,7 @@ function CanvasInner() {
     };
   }, [startLinking, completeLinking, cancelLinking, linkingFrom]);
 
-  // Keep connected source data available to Chat (without polling DOM attributes)
+  // Keep connected source data available to Chat via store listener (throttled)
   useEffect(() => {
     if (!editor) return;
 
@@ -170,33 +176,37 @@ function CanvasInner() {
 
       for (const shape of shapes) {
         if (shape.type === "youtube" || shape.type === "tiktok" || shape.type === "instagram") {
-          const url = (shape.props as any).url || "";
-          shapeData[shape.id] = { type: shape.type, url };
+          shapeData[shape.id] = { type: shape.type, url: (shape.props as any).url || "" };
         } else if (shape.type === "canvas-image") {
-          const name = (shape.props as any).name || "imagem";
-          const src = (shape.props as any).src || "";
-          shapeData[shape.id] = { type: "canvas-image", name, src };
+          shapeData[shape.id] = { type: "canvas-image", name: (shape.props as any).name || "imagem", src: (shape.props as any).src || "" };
         } else if (shape.type === "canvas-file") {
-          const name = (shape.props as any).name || "arquivo";
           const fileType = (shape.props as any).fileType || "";
           const src = (shape.props as any).src || "";
-
           shapeData[shape.id] = {
             type: "canvas-file",
-            name,
+            name: (shape.props as any).name || "arquivo",
             fileType,
             textSnippet: isTextLikeMime(fileType) && src ? dataUrlToTextSnippet(src) : "",
           };
         }
       }
-
       (window as any).__canvasShapeData = shapeData;
     };
 
     updateSourceData();
-    const interval = setInterval(updateSourceData, 300);
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const unsub = editor.store.listen(() => {
+      if (!timeout) {
+        timeout = setTimeout(() => {
+          timeout = null;
+          updateSourceData();
+        }, 500);
+      }
+    });
+
     return () => {
-      clearInterval(interval);
+      unsub();
+      if (timeout) clearTimeout(timeout);
       (window as any).__canvasShapeData = {};
     };
   }, [editor]);
