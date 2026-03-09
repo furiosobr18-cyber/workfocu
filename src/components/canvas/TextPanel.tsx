@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Editor } from "tldraw";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type } from "lucide-react";
 import FontPicker from "./FontPicker";
@@ -15,8 +13,6 @@ const WEIGHT_LABELS: Record<number, string> = {
   100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular",
   500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
 };
-
-const SIZE_UNITS = ["Px", "Em", "Rem"] as const;
 
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
@@ -34,21 +30,32 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
+    
+    // Show panel when text tool is active OR when a text shape is selected
+    const currentTool = editor.getCurrentToolId();
     const shapes = editor.getSelectedShapes();
     const textShape = shapes.find((s) => s.type === "text" || s.type === "geo");
-    if (!textShape) { setVisible(false); return; }
-    setVisible(true);
-    const props = textShape.props as any;
-    if (props.font) {
-      const fontMap: Record<string, string> = { sans: "Inter", serif: "Georgia", mono: "JetBrains Mono", draw: "Comic Sans MS" };
-      setFontFamily(fontMap[props.font] || "Inter");
+    
+    if (currentTool === "text" || textShape) {
+      setVisible(true);
+    } else {
+      setVisible(false);
+      return;
     }
-    if (props.size) {
-      const sizeMap: Record<string, number> = { s: 12, m: 16, l: 24, xl: 36 };
-      setFontSize(sizeMap[props.size] || 16);
+
+    if (textShape) {
+      const props = textShape.props as any;
+      if (props.font) {
+        const fontMap: Record<string, string> = { sans: "Inter", serif: "Georgia", mono: "JetBrains Mono", draw: "Comic Sans MS" };
+        setFontFamily(fontMap[props.font] || props.font);
+      }
+      if (props.size) {
+        const sizeMap: Record<string, number> = { s: 12, m: 16, l: 24, xl: 36 };
+        setFontSize(sizeMap[props.size] || 16);
+      }
+      if (props.color) setColor(props.color === "black" ? "000000" : props.color.replace("#", ""));
+      if (props.align) setAlign(props.align);
     }
-    if (props.color) setColor(props.color === "black" ? "000000" : props.color.replace("#", ""));
-    if (props.align) setAlign(props.align);
   }, [editor]);
 
   useEffect(() => {
@@ -68,9 +75,11 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const handleFontSelect = (font: string) => {
     setFontFamily(font);
-    // Map back to tldraw fonts
     const reverseMap: Record<string, string> = {
-      "Inter": "sans", "Georgia": "serif", "JetBrains Mono": "mono", "Comic Sans MS": "draw",
+      "Inter": "sans", "Arial": "sans", "Helvetica": "sans",
+      "Georgia": "serif", "Times New Roman": "serif", "Palatino": "serif",
+      "JetBrains Mono": "mono", "Fira Code": "mono", "Source Code Pro": "mono", "Courier New": "mono",
+      "Comic Sans MS": "draw",
     };
     updateProp("font", reverseMap[font] || "sans");
     setFontPickerOpen(false);
@@ -83,7 +92,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const handleSizeChange = (val: number) => {
     setFontSize(val);
-    const sizeMap: Record<string, string> = {};
     if (val <= 14) updateProp("size", "s");
     else if (val <= 20) updateProp("size", "m");
     else if (val <= 30) updateProp("size", "l");
@@ -98,8 +106,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
     { value: "end", icon: AlignRight },
     { value: "justify", icon: AlignJustify },
   ];
-
-  const weightLabel = WEIGHT_LABELS[fontWeight] || "Regular";
 
   return (
     <>
