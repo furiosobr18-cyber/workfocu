@@ -3,7 +3,8 @@ import { Editor, DefaultColorStyle, DefaultFontStyle, DefaultSizeStyle } from "t
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type, Square } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type } from "lucide-react";
 import FontPicker from "./FontPicker";
 
 interface TextPanelProps {
@@ -122,6 +123,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [outlineEnabled, setOutlineEnabled] = useState(false);
   const [outlineColor, setOutlineColor] = useState("000000");
+  const [outlineSize, setOutlineSize] = useState(1);
 
   const lastSyncedShapeId = useRef<string | null>(null);
   const sansOverrideFontRef = useRef<string>("Inter");
@@ -250,15 +252,18 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
     if (outlineEnabled) {
       const { r, g, b } = hexToRgb(outlineColor);
+      const px = outlineSize;
       styleEl.textContent = `
         .tl-container {
           --tl-text-outline:
-            0 var(--b) 0 rgb(${r},${g},${b}),
-            0 var(--a) 0 rgb(${r},${g},${b}),
-            var(--b) var(--b) 0 rgb(${r},${g},${b}),
-            var(--a) var(--b) 0 rgb(${r},${g},${b}),
-            var(--a) var(--a) 0 rgb(${r},${g},${b}),
-            var(--b) var(--a) 0 rgb(${r},${g},${b}) !important;
+            ${px}px 0 0 rgb(${r},${g},${b}),
+            -${px}px 0 0 rgb(${r},${g},${b}),
+            0 ${px}px 0 rgb(${r},${g},${b}),
+            0 -${px}px 0 rgb(${r},${g},${b}),
+            ${px}px ${px}px 0 rgb(${r},${g},${b}),
+            -${px}px ${px}px 0 rgb(${r},${g},${b}),
+            ${px}px -${px}px 0 rgb(${r},${g},${b}),
+            -${px}px -${px}px 0 rgb(${r},${g},${b}) !important;
         }
       `;
     } else {
@@ -268,7 +273,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
     return () => {
       // Keep the style element around, don't remove on unmount
     };
-  }, [outlineEnabled, outlineColor]);
+  }, [outlineEnabled, outlineColor, outlineSize]);
 
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
@@ -336,7 +341,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
     editor.setStyleForSelectedShapes(DefaultFontStyle, mappedFont as any);
     editor.setStyleForNextShapes(DefaultFontStyle, mappedFont as any);
-    editor.setCurrentTool("text");
     setFontPickerOpen(false);
   };
 
@@ -349,7 +353,6 @@ export default function TextPanel({ editor }: TextPanelProps) {
     setColor(cleanHex);
     editor.setStyleForSelectedShapes(DefaultColorStyle, nearestName as any);
     editor.setStyleForNextShapes(DefaultColorStyle, nearestName as any);
-    editor.setCurrentTool("text");
   };
 
   const handleAlignChange = (a: string) => {
@@ -370,7 +373,10 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
     editor.setStyleForSelectedShapes(DefaultSizeStyle, size as any);
     editor.setStyleForNextShapes(DefaultSizeStyle, size as any);
-    editor.setCurrentTool("text");
+  };
+
+  const handleOutlineToggle = (enabled: boolean) => {
+    setOutlineEnabled(enabled);
   };
 
   if (!visible) return null;
@@ -502,30 +508,52 @@ export default function TextPanel({ editor }: TextPanelProps) {
                 ))}
               </div>
             </Row>
-            <Row label="Contorno">
-              <div className="flex-1 flex items-center gap-2">
-                <Switch
-                  checked={outlineEnabled}
-                  onCheckedChange={setOutlineEnabled}
-                />
-                {outlineEnabled && (
-                  <>
-                    <input
-                      type="color"
-                      value={`#${outlineColor}`}
-                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
-                      className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
-                    />
-                    <Input
-                      value={outlineColor}
-                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
-                      className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
-                      maxLength={7}
-                    />
-                  </>
-                )}
-              </div>
-            </Row>
+
+            {/* Contorno Section */}
+            <div className="border-t border-border pt-4 mt-2">
+              <Row label="Contorno">
+                <div className="flex-1 flex items-center gap-2">
+                  <Switch
+                    checked={outlineEnabled}
+                    onCheckedChange={handleOutlineToggle}
+                  />
+                  {outlineEnabled && (
+                    <>
+                      <input
+                        type="color"
+                        value={`#${outlineColor}`}
+                        onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                        className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
+                      />
+                      <Input
+                        value={outlineColor}
+                        onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                        className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
+                        maxLength={7}
+                      />
+                    </>
+                  )}
+                </div>
+              </Row>
+              
+              {outlineEnabled && (
+                <div className="mt-3">
+                  <Row label="Espessura">
+                    <div className="flex-1 flex items-center gap-2">
+                      <Slider
+                        value={[outlineSize]}
+                        onValueChange={([val]) => setOutlineSize(val)}
+                        min={1}
+                        max={10}
+                        step={0.5}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground w-8 text-right">{outlineSize}px</span>
+                    </div>
+                  </Row>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollArea>
       </div>
