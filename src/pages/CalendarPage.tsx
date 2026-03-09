@@ -24,7 +24,7 @@ const CalendarPage = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => { try { const r = localStorage.getItem("calendar_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventTime, setNewEventTime] = useState("");
@@ -62,6 +62,7 @@ const CalendarPage = () => {
     }
     
     setEvents(data || []);
+    try { localStorage.setItem("calendar_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const createEvent = async (e: React.FormEvent) => {

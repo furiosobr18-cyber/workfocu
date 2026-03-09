@@ -23,7 +23,7 @@ const Tasks = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => { try { const r = localStorage.getItem("tasks_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
@@ -58,6 +58,7 @@ const Tasks = () => {
     }
     
     setTasks(data || []);
+    try { localStorage.setItem("tasks_cache", JSON.stringify(data || [])); } catch {}
   };
 
   const createTask = async (e: React.FormEvent) => {
