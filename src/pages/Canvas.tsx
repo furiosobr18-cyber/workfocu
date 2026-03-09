@@ -16,6 +16,7 @@ import { ChatShapeUtil } from "@/components/canvas/ChatShape";
 import { VideoShapeUtil } from "@/components/canvas/VideoShape";
 import CanvasToolbar from "@/components/canvas/CanvasToolbar";
 import TextPanel from "@/components/canvas/TextPanel";
+import ShapeContextMenu from "@/components/canvas/ShapeContextMenu";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 import { ImageFrameTool } from "@/components/canvas/ImageFrameTool";
@@ -266,39 +267,44 @@ function CanvasInner() {
               </Tooltip>
             </div>
 
-            {/* Save status indicator */}
+            {/* Save button */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md px-2 py-1.5">
-                  {isSaving ? (
-                    <>
-                      <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-                      <span className="text-xs text-muted-foreground">Salvando...</span>
-                    </>
-                  ) : lastSaved ? (
-                    <>
-                      <Cloud className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs text-muted-foreground">Salvo</span>
-                    </>
-                  ) : (
-                    <>
-                      <CloudOff className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">-</span>
-                    </>
-                  )}
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={saveNow}
+                  disabled={isSaving}
+                  className="h-8 w-8 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:bg-accent"
+                >
+                  <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse text-muted-foreground' : ''}`} />
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {lastSaved ? (
-                  <p>Último salvamento: {lastSaved.toLocaleTimeString()}</p>
-                ) : (
-                  <p>Salvamento automático ativo</p>
-                )}
+                <p>{isSaving ? 'Salvando...' : 'Salvar agora'}</p>
               </TooltipContent>
             </Tooltip>
-          </div>
 
-          {/* Linking mode banner */}
+            {/* Save status */}
+            <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md px-2 py-1.5">
+              {isSaving ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                  <span className="text-xs text-muted-foreground">Salvando...</span>
+                </>
+              ) : lastSaved ? (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-success" />
+                  <span className="text-xs text-muted-foreground">Salvo</span>
+                </>
+              ) : (
+                <>
+                  <CloudOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">-</span>
+                </>
+              )}
+            </div>
+          </div>
           {linkingFrom && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-muted/90 text-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in border border-border">
               <span className="animate-pulse">🔗</span>
@@ -321,6 +327,7 @@ function CanvasInner() {
             />
           </div>
           <ConnectionOverlay editor={editor} />
+          <ShapeContextMenu editor={editor} />
           <TextPanel editor={editor} />
           <CanvasToolbar editor={editor} />
         </main>
