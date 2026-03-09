@@ -19,7 +19,7 @@ import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 import { ImageFrameTool } from "@/components/canvas/ImageFrameTool";
 import { VideoFrameTool } from "@/components/canvas/VideoFrameTool";
 
-const customShapeUtils = [YouTubeShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
+const customShapeUtils = [YouTubeShapeUtil, TikTokShapeUtil, InstagramShapeUtil, ImageShapeUtil, FileShapeUtil, ChatShapeUtil, VideoShapeUtil];
 const customTools = [ImageFrameTool, VideoFrameTool];
 
 function isTextLikeMime(fileType: string): boolean {
