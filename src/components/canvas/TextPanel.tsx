@@ -90,6 +90,18 @@ function getNearestTldrawColorName(hex: string): keyof typeof TLDRAW_COLORS {
   return bestName;
 }
 
+function getFontFormatFromUrl(fontUrl: string) {
+  try {
+    const pathname = new URL(fontUrl).pathname.toLowerCase();
+    if (pathname.endsWith(".woff2")) return "woff2";
+    if (pathname.endsWith(".woff")) return "woff";
+    if (pathname.endsWith(".otf")) return "opentype";
+    return "truetype";
+  } catch {
+    return "truetype";
+  }
+}
+
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
   const [fontFamily, setFontFamily] = useState("Inter");
@@ -106,10 +118,45 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
   const lastSyncedShapeId = useRef<string | null>(null);
   const sansOverrideFontRef = useRef<string>("Inter");
+  const sansOverrideBlobUrlRef = useRef<string | null>(null);
 
-  const applyTldrawSansOverride = useCallback((fontName: string, fontUrl: string) => {
+  const refreshSansTextShapes = useCallback(() => {
+    if (!editor) return;
+
+    const sansShapes = editor
+      .getCurrentPageShapes()
+      .filter((shape) => (shape.type === "text" || shape.type === "geo") && (shape.props as any).font === "sans");
+
+    sansShapes.forEach((shape) => {
+      editor.updateShape({
+        id: shape.id,
+        type: shape.type,
+        props: { font: "sans" } as any,
+      });
+    });
+  }, [editor]);
+
+  const applyTldrawSansOverride = useCallback(async (fontName: string, fontUrl: string) => {
     sansOverrideFontRef.current = fontName;
 
+    if (sansOverrideBlobUrlRef.current) {
+      URL.revokeObjectURL(sansOverrideBlobUrlRef.current);
+      sansOverrideBlobUrlRef.current = null;
+    }
+
+    let resolvedFontUrl = fontUrl;
+    try {
+      const response = await fetch(fontUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        resolvedFontUrl = URL.createObjectURL(blob);
+        sansOverrideBlobUrlRef.current = resolvedFontUrl;
+      }
+    } catch {
+      resolvedFontUrl = fontUrl;
+    }
+
+    const format = getFontFormatFromUrl(fontUrl);
     const styleId = "tldraw-sans-font-override";
     let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
     if (!styleEl) {
@@ -118,33 +165,62 @@ export default function TextPanel({ editor }: TextPanelProps) {
       document.head.appendChild(styleEl);
     }
 
-    styleEl.textContent = `
-      @font-face {
-        font-family: 'tldraw_sans';
-        src: url('${fontUrl}');
-        font-display: swap;
-      }
-    `;
+    const faces = [100, 200, 300, 400, 500, 600, 700, 800, 900].map(
+      (weight) => `
+        @font-face {
+          font-family: 'tldraw_sans';
+          src: url('${resolvedFontUrl}') format('${format}');
+          font-style: normal;
+          font-weight: ${weight};
+          font-display: swap;
+        }
+      `
+    );
+
+    styleEl.textContent = faces.join("\n");
 
     localStorage.setItem("canvas_sans_override_font", fontName);
     localStorage.setItem("canvas_sans_override_url", fontUrl);
-  }, []);
+
+    try {
+      await document.fonts.load(`16px "tldraw_sans"`);
+    } catch {
+      // no-op
+    }
+
+    refreshSansTextShapes();
+  }, [refreshSansTextShapes]);
 
   const clearTldrawSansOverride = useCallback(() => {
     const styleEl = document.getElementById("tldraw-sans-font-override");
     if (styleEl) styleEl.remove();
+
+    if (sansOverrideBlobUrlRef.current) {
+      URL.revokeObjectURL(sansOverrideBlobUrlRef.current);
+      sansOverrideBlobUrlRef.current = null;
+    }
+
     sansOverrideFontRef.current = "Inter";
     localStorage.removeItem("canvas_sans_override_font");
     localStorage.removeItem("canvas_sans_override_url");
-  }, []);
+    refreshSansTextShapes();
+  }, [refreshSansTextShapes]);
 
   useEffect(() => {
     const savedFont = localStorage.getItem("canvas_sans_override_font");
     const savedUrl = localStorage.getItem("canvas_sans_override_url");
+
     if (savedFont && savedUrl) {
-      applyTldrawSansOverride(savedFont, savedUrl);
+      void applyTldrawSansOverride(savedFont, savedUrl);
       setFontFamily(savedFont);
     }
+
+    return () => {
+      if (sansOverrideBlobUrlRef.current) {
+        URL.revokeObjectURL(sansOverrideBlobUrlRef.current);
+        sansOverrideBlobUrlRef.current = null;
+      }
+    };
   }, [applyTldrawSansOverride]);
 
   const syncFromEditor = useCallback(() => {
@@ -200,8 +276,8 @@ export default function TextPanel({ editor }: TextPanelProps) {
     const mappedFont = FONT_TO_TLDRAW[font] ?? "sans";
 
     if (customFontUrl) {
-      applyTldrawSansOverride(font, customFontUrl);
-    } else if (font === "Inter") {
+      void applyTldrawSansOverride(font, customFontUrl);
+    } else {
       clearTldrawSansOverride();
     }
 
