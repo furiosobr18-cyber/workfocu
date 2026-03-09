@@ -30,20 +30,26 @@ function SocialDrawer({ addShape }: { addShape: (type: string) => void }) {
       >
         <Youtube className="w-4 h-4 text-destructive" />
       </button>
-      {open && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1 shadow-xl animate-fade-in">
-          {items.map(({ type, icon: Icon, title, color }) => (
-            <button
-              key={type}
-              onClick={() => { addShape(type); setOpen(false); }}
-              title={title}
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            >
-              <Icon className={`w-4 h-4 ${color}`} />
-            </button>
-          ))}
-        </div>
-      )}
+      <div
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1 shadow-xl transition-all duration-200 origin-bottom"
+        style={{
+          opacity: open ? 1 : 0,
+          transform: `translateX(-50%) scaleY(${open ? 1 : 0})`,
+          pointerEvents: open ? "auto" : "none",
+          maxHeight: open ? 200 : 0,
+        }}
+      >
+        {items.map(({ type, icon: Icon, title, color }) => (
+          <button
+            key={type}
+            onClick={() => { addShape(type); setOpen(false); }}
+            title={title}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+          >
+            <Icon className={`w-4 h-4 ${color}`} />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
