@@ -148,9 +148,9 @@ function CanvasInner() {
       const shapeData: Record<string, any> = {};
 
       for (const shape of shapes) {
-        if (shape.type === "youtube") {
+        if (shape.type === "youtube" || shape.type === "tiktok" || shape.type === "instagram") {
           const url = (shape.props as any).url || "";
-          shapeData[shape.id] = { type: "youtube", url };
+          shapeData[shape.id] = { type: shape.type, url };
         } else if (shape.type === "canvas-image") {
           const name = (shape.props as any).name || "imagem";
           const src = (shape.props as any).src || "";
