@@ -1,23 +1,39 @@
-import { CanvasElement } from "@/hooks/useCanvasStore";
+import { CanvasElement, CanvasConnection } from "@/hooks/useCanvasStore";
 import { Image, Video, FileText, Youtube } from "lucide-react";
+import ChatElement from "./ChatElement";
 
 function extractYouTubeId(url: string): string {
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
   return match?.[1] || '';
 }
 
+// Element types that can be connection sources
+const SOURCE_TYPES = new Set(['youtube', 'image', 'video', 'file']);
+
 interface Props {
   element: CanvasElement;
   isSelected: boolean;
   isEditing: boolean;
   zoom: number;
+  connections: CanvasConnection[];
+  allElements: CanvasElement[];
+  isLinking: boolean;
   onUpdateProps: (props: Record<string, any>) => void;
   onStopEditing: () => void;
+  onStartLinking: (elementId: string) => void;
+  onCompleteLinking: (elementId: string) => void;
+  onChanged?: () => void;
 }
 
-export default function CanvasElementView({ element: el, isSelected, isEditing, zoom, onUpdateProps, onStopEditing }: Props) {
+export default function CanvasElementView({
+  element: el, isSelected, isEditing, zoom, connections, allElements,
+  isLinking, onUpdateProps, onStopEditing, onStartLinking, onCompleteLinking, onChanged,
+}: Props) {
   const borderWidth = isSelected ? Math.max(1.5, 2 / zoom) : 0;
   const handleSize = Math.max(6, 10 / zoom);
+  const dotSize = Math.max(8, 12 / zoom);
+  const isSource = SOURCE_TYPES.has(el.type);
+  const isTarget = el.type === 'chat';
 
   const renderContent = () => {
     switch (el.type) {
@@ -29,18 +45,14 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
               defaultValue={el.props.text}
               onBlur={(e) => { onUpdateProps({ text: e.target.value }); onStopEditing(); }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  onUpdateProps({ text: (e.target as HTMLTextAreaElement).value });
-                  onStopEditing();
-                }
+                if (e.key === 'Escape') { onUpdateProps({ text: (e.target as HTMLTextAreaElement).value }); onStopEditing(); }
                 e.stopPropagation();
               }}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               className="w-full h-full resize-none bg-transparent outline-none border-none p-1"
               style={{
-                fontSize: el.props.fontSize,
-                color: el.props.color,
+                fontSize: el.props.fontSize, color: el.props.color,
                 fontFamily: `'${el.props.fontFamily}', sans-serif`,
                 fontWeight: el.props.bold ? 'bold' : 'normal',
                 fontStyle: el.props.italic ? 'italic' : 'normal',
@@ -53,8 +65,7 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
           <div
             className="w-full h-full overflow-hidden select-none pointer-events-none p-1 whitespace-pre-wrap break-words"
             style={{
-              fontSize: el.props.fontSize,
-              color: el.props.color,
+              fontSize: el.props.fontSize, color: el.props.color,
               fontFamily: `'${el.props.fontFamily}', sans-serif`,
               fontWeight: el.props.bold ? 'bold' : 'normal',
               fontStyle: el.props.italic ? 'italic' : 'normal',
@@ -67,15 +78,8 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
 
       case 'image':
         return el.props.src ? (
-          <img
-            src={el.props.src}
-            alt={el.props.name}
-            className="w-full h-full pointer-events-none"
-            style={{
-              objectFit: el.props.fit || 'cover',
-              borderRadius: el.props.borderRadius || 0,
-              opacity: el.props.opacity ?? 1,
-            }}
+          <img src={el.props.src} alt={el.props.name} className="w-full h-full pointer-events-none"
+            style={{ objectFit: el.props.fit || 'cover', borderRadius: el.props.borderRadius || 0, opacity: el.props.opacity ?? 1 }}
             draggable={false}
           />
         ) : (
@@ -87,12 +91,7 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
 
       case 'video':
         return el.props.src ? (
-          <video
-            src={el.props.src}
-            controls
-            className="w-full h-full pointer-events-none rounded-lg"
-            style={{ objectFit: 'cover' }}
-          />
+          <video src={el.props.src} controls className="w-full h-full pointer-events-none rounded-lg" style={{ objectFit: 'cover' }} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 rounded-xl border-2 border-dashed border-muted-foreground/30 gap-2">
             <Video className="w-10 h-10 text-muted-foreground/50" />
@@ -105,31 +104,21 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
         if (!videoId) {
           return (
             <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 rounded-xl border-2 border-dashed border-muted-foreground/30 gap-2">
-              <Youtube className="w-10 h-10 text-red-500/50" />
+              <Youtube className="w-10 h-10 text-destructive/50" />
               <span className="text-xs text-muted-foreground/50">Duplo-clique para adicionar URL</span>
             </div>
           );
         }
-        return (
-          <iframe
-            src={`https://www.youtube.com/embed/${videoId}`}
-            className="w-full h-full rounded-lg pointer-events-none"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope"
-            allowFullScreen
-          />
-        );
+        return <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full rounded-lg pointer-events-none" allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />;
       }
 
       case 'shape':
         return (
-          <div
-            className="w-full h-full"
-            style={{
-              backgroundColor: el.props.fill,
-              border: `${el.props.strokeWidth}px solid ${el.props.stroke}`,
-              borderRadius: el.props.shapeType === 'circle' ? '50%' : (el.props.borderRadius || 0),
-            }}
-          />
+          <div className="w-full h-full" style={{
+            backgroundColor: el.props.fill,
+            border: `${el.props.strokeWidth}px solid ${el.props.stroke}`,
+            borderRadius: el.props.shapeType === 'circle' ? '50%' : (el.props.borderRadius || 0),
+          }} />
         );
 
       case 'file':
@@ -138,6 +127,17 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
             <FileText className="w-5 h-5 text-primary flex-shrink-0" />
             <span className="text-sm text-foreground truncate">{el.props.name || 'Arquivo'}</span>
           </div>
+        );
+
+      case 'chat':
+        return (
+          <ChatElement
+            element={el}
+            connections={connections}
+            allElements={allElements}
+            onUpdateProps={onUpdateProps}
+            onChanged={onChanged}
+          />
         );
 
       default:
@@ -150,36 +150,82 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
       data-element-id={el.id}
       className="absolute"
       style={{
-        left: el.x,
-        top: el.y,
-        width: el.width,
-        height: el.height,
+        left: el.x, top: el.y, width: el.width, height: el.height,
         transform: `rotate(${el.rotation}deg)`,
         outline: isSelected ? `${borderWidth}px solid hsl(210, 100%, 56%)` : 'none',
         outlineOffset: borderWidth > 0 ? 1 / zoom : 0,
-        cursor: el.locked ? 'not-allowed' : (isEditing ? 'text' : 'move'),
+        cursor: el.locked ? 'not-allowed' : (el.type === 'chat' ? 'default' : (isEditing ? 'text' : 'move')),
         zIndex: el.zIndex,
       }}
     >
       {renderContent()}
 
+      {/* Source connection dot (right side) */}
+      {isSource && (
+        <div
+          data-connection-source={el.id}
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onStartLinking(el.id); }}
+          style={{
+            position: 'absolute', right: -dotSize * 0.7, top: '50%',
+            transform: 'translateY(-50%)',
+            width: dotSize, height: dotSize,
+            borderRadius: '50%',
+            backgroundColor: 'hsl(var(--primary))',
+            border: `${Math.max(1, 2 / zoom)}px solid white`,
+            cursor: 'crosshair', zIndex: 200,
+          }}
+          title="Arraste para conectar ao Chat"
+        />
+      )}
+
+      {/* Target connection dot (left side) */}
+      {isTarget && (
+        <div
+          data-connection-target={el.id}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => { if (isLinking) { e.stopPropagation(); onCompleteLinking(el.id); } }}
+          style={{
+            position: 'absolute', left: -dotSize * 0.7, top: '50%',
+            transform: 'translateY(-50%)',
+            width: dotSize, height: dotSize,
+            borderRadius: '50%',
+            backgroundColor: isLinking ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+            border: `${Math.max(1, 2 / zoom)}px solid white`,
+            cursor: isLinking ? 'pointer' : 'default', zIndex: 200,
+            transition: 'background-color 0.2s',
+          }}
+          title="Alvo de conexão"
+        />
+      )}
+
       {/* Resize handles */}
-      {isSelected && !el.locked && !isEditing && (
+      {isSelected && !el.locked && !isEditing && el.type !== 'chat' && (
         <>
           {(['nw', 'ne', 'sw', 'se'] as const).map(handle => (
-            <div
-              key={handle}
-              data-handle={handle}
-              data-element-id={el.id}
+            <div key={handle} data-handle={handle} data-element-id={el.id}
               className="bg-white border-2 border-primary rounded-full"
               style={{
-                position: 'absolute',
-                width: handleSize,
-                height: handleSize,
+                position: 'absolute', width: handleSize, height: handleSize,
                 ...(handle.includes('n') ? { top: -handleSize / 2 } : { bottom: -handleSize / 2 }),
                 ...(handle.includes('w') ? { left: -handleSize / 2 } : { right: -handleSize / 2 }),
-                cursor: `${handle}-resize`,
-                zIndex: 100,
+                cursor: `${handle}-resize`, zIndex: 100,
+              }}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Resize handles for chat (all 4 corners) */}
+      {isSelected && !el.locked && el.type === 'chat' && (
+        <>
+          {(['nw', 'ne', 'sw', 'se'] as const).map(handle => (
+            <div key={handle} data-handle={handle} data-element-id={el.id}
+              className="bg-white border-2 border-primary rounded-full"
+              style={{
+                position: 'absolute', width: handleSize, height: handleSize,
+                ...(handle.includes('n') ? { top: -handleSize / 2 } : { bottom: -handleSize / 2 }),
+                ...(handle.includes('w') ? { left: -handleSize / 2 } : { right: -handleSize / 2 }),
+                cursor: `${handle}-resize`, zIndex: 100,
               }}
             />
           ))}
@@ -188,14 +234,8 @@ export default function CanvasElementView({ element: el, isSelected, isEditing, 
 
       {/* Lock indicator */}
       {el.locked && isSelected && (
-        <div
-          className="absolute flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-primary text-primary-foreground shadow-lg"
-          style={{
-            top: -8 / zoom,
-            left: 0,
-            transform: `translateY(-100%) scale(${1 / zoom})`,
-            transformOrigin: 'bottom left',
-          }}
+        <div className="absolute flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-primary text-primary-foreground shadow-lg"
+          style={{ top: -8 / zoom, left: 0, transform: `translateY(-100%) scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
         >
           🔒 Fixado
         </div>

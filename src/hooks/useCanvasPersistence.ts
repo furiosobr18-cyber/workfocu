@@ -73,10 +73,8 @@ export function useCanvasPersistence(store: ReturnType<typeof useCanvasStore>) {
               store.loadSnapshot(content as CanvasSnapshot);
               saveToLocalCache(content as CanvasSnapshot);
             }
-            // If content is tldraw format (no version:2), we start fresh
           }
         } else {
-          // Create new document
           const snapshot = store.getSnapshot();
           const serialized = JSON.parse(JSON.stringify(snapshot));
           const { data: newDoc, error: createError } = await supabase
@@ -120,26 +118,20 @@ export function useCanvasPersistence(store: ReturnType<typeof useCanvasStore>) {
     }
   }, [documentId, user, store]);
 
-  // Schedule saves when notified of changes
   const scheduleSave = useCallback(() => {
     if (!documentId || isLoadingRef.current) return;
 
-    // Throttled local save
     if (!localSaveTimeoutRef.current) {
       localSaveTimeoutRef.current = setTimeout(() => {
         localSaveTimeoutRef.current = null;
-        try {
-          saveToLocalCache(store.getSnapshot());
-        } catch {}
+        try { saveToLocalCache(store.getSnapshot()); } catch {}
       }, LOCAL_SAVE_THROTTLE);
     }
 
-    // Debounced cloud save
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(saveToCloud, CLOUD_SAVE_DELAY);
   }, [documentId, saveToCloud, store]);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -147,11 +139,5 @@ export function useCanvasPersistence(store: ReturnType<typeof useCanvasStore>) {
     };
   }, []);
 
-  return {
-    documentId,
-    isSaving,
-    lastSaved,
-    saveNow: saveToCloud,
-    scheduleSave,
-  };
+  return { documentId, isSaving, lastSaved, saveNow: saveToCloud, scheduleSave };
 }
