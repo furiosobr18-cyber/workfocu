@@ -54,6 +54,63 @@ function SocialDrawer({ addShape }: { addShape: (type: string) => void }) {
   );
 }
 
+function LayerDrawer({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleEnter = () => {
+    clearTimeout(timeoutRef.current);
+    setOpen(true);
+  };
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 200);
+  };
+
+  const hasSelection = editor.getSelectedShapeIds().length > 0;
+
+  const actions = [
+    { id: "front", icon: ArrowUpToLine, title: "Trazer para frente", action: () => editor.bringToFront(editor.getSelectedShapeIds()) },
+    { id: "forward", icon: ArrowUp, title: "Avançar uma camada", action: () => editor.bringForward(editor.getSelectedShapeIds()) },
+    { id: "backward", icon: ArrowDown, title: "Recuar uma camada", action: () => editor.sendBackward(editor.getSelectedShapeIds()) },
+    { id: "back", icon: ArrowDownToLine, title: "Enviar para trás", action: () => editor.sendToBack(editor.getSelectedShapeIds()) },
+  ];
+
+  return (
+    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        title="Camadas"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Layers className="w-4 h-4" />
+      </button>
+      <div
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1 shadow-xl transition-all duration-200 origin-bottom"
+        style={{
+          opacity: open ? 1 : 0,
+          transform: `translateX(-50%) scaleY(${open ? 1 : 0})`,
+          pointerEvents: open ? "auto" : "none",
+          maxHeight: open ? 300 : 0,
+        }}
+      >
+        {actions.map(({ id, icon: Icon, title, action }) => (
+          <button
+            key={id}
+            onClick={() => { if (hasSelection) action(); }}
+            title={title}
+            className={`p-2 rounded-lg transition-colors ${
+              hasSelection
+                ? "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                : "text-muted-foreground/40 cursor-not-allowed"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface CanvasToolbarProps {
   editor: Editor | null;
 }
