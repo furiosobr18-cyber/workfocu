@@ -144,8 +144,8 @@ const Notes = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [noteLinks, setNoteLinks] = useState<NoteLink[]>([]);
+  const [notes, setNotes] = useState<Note[]>(() => { try { const r = localStorage.getItem("notes_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
+  const [noteLinks, setNoteLinks] = useState<NoteLink[]>(() => { try { const r = localStorage.getItem("notelinks_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
