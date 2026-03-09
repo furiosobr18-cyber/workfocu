@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Editor, DefaultColorStyle, DefaultFontStyle, DefaultSizeStyle } from "tldraw";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type, Square } from "lucide-react";
 import FontPicker from "./FontPicker";
 
 interface TextPanelProps {
@@ -119,6 +120,8 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const [lineUnit, setLineUnit] = useState<string>("Em");
   const [align, setAlign] = useState<string>("start");
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [outlineEnabled, setOutlineEnabled] = useState(false);
+  const [outlineColor, setOutlineColor] = useState("000000");
 
   const lastSyncedShapeId = useRef<string | null>(null);
   const sansOverrideFontRef = useRef<string>("Inter");
@@ -235,12 +238,44 @@ export default function TextPanel({ editor }: TextPanelProps) {
     };
   }, [applySansFamilyOverride, applyUploadedSansOverride]);
 
+  // Outline CSS injection
+  useEffect(() => {
+    const styleId = "tldraw-text-outline-override";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    if (outlineEnabled) {
+      const { r, g, b } = hexToRgb(outlineColor);
+      styleEl.textContent = `
+        .tl-container {
+          --tl-text-outline:
+            0 var(--b) 0 rgb(${r},${g},${b}),
+            0 var(--a) 0 rgb(${r},${g},${b}),
+            var(--b) var(--b) 0 rgb(${r},${g},${b}),
+            var(--a) var(--b) 0 rgb(${r},${g},${b}),
+            var(--a) var(--a) 0 rgb(${r},${g},${b}),
+            var(--b) var(--a) 0 rgb(${r},${g},${b}) !important;
+        }
+      `;
+    } else {
+      styleEl.textContent = `.tl-container { --tl-text-outline: none !important; }`;
+    }
+
+    return () => {
+      // Keep the style element around, don't remove on unmount
+    };
+  }, [outlineEnabled, outlineColor]);
+
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
 
     const currentTool = editor.getCurrentToolId();
     const shapes = editor.getSelectedShapes();
-    const textShape = shapes.find((s) => s.type === "text" || s.type === "geo");
+    const textShape = shapes.find((s) => s.type === "text");
 
     if (currentTool === "text" || textShape) {
       setVisible(true);
@@ -465,6 +500,30 @@ export default function TextPanel({ editor }: TextPanelProps) {
                     <Icon className="w-3.5 h-3.5" />
                   </button>
                 ))}
+              </div>
+            </Row>
+            <Row label="Contorno">
+              <div className="flex-1 flex items-center gap-2">
+                <Switch
+                  checked={outlineEnabled}
+                  onCheckedChange={setOutlineEnabled}
+                />
+                {outlineEnabled && (
+                  <>
+                    <input
+                      type="color"
+                      value={`#${outlineColor}`}
+                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                      className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
+                    />
+                    <Input
+                      value={outlineColor}
+                      onChange={(e) => setOutlineColor(e.target.value.replace("#", "").slice(0, 6))}
+                      className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
+                      maxLength={7}
+                    />
+                  </>
+                )}
               </div>
             </Row>
           </div>
