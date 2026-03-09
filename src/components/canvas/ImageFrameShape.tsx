@@ -9,14 +9,7 @@ import {
 } from "tldraw";
 import { SourceDot } from "./YouTubeShape";
 import { useState } from "react";
-
-const FIT_MODES = ["cover", "contain", "fill", "none"] as const;
-const FIT_LABELS: Record<string, string> = {
-  cover: "Cover",
-  contain: "Fit",
-  fill: "Stretch",
-  none: "Original",
-};
+import LayoutPanel from "./LayoutPanel";
 
 export type ImageFrameShape = TLBaseShape<
   "image-frame",
@@ -27,6 +20,12 @@ export type ImageFrameShape = TLBaseShape<
     name: string;
     objectFit: string;
     borderRadius: number;
+    opacity: number;
+    padding: number;
+    alignX: string;
+    alignY: string;
+    overflow: string;
+    bgColor: string;
     label: string;
   }
 >;
@@ -38,11 +37,18 @@ export class ImageFrameShapeUtil extends BaseBoxShapeUtil<ImageFrameShape> {
 
   static override props: RecordProps<ImageFrameShape> = {
     w: T.number, h: T.number, src: T.string, name: T.string,
-    objectFit: T.string, borderRadius: T.number, label: T.string,
+    objectFit: T.string, borderRadius: T.number, opacity: T.number,
+    padding: T.number, alignX: T.string, alignY: T.string,
+    overflow: T.string, bgColor: T.string, label: T.string,
   };
 
   getDefaultProps(): ImageFrameShape["props"] {
-    return { w: 340, h: 240, src: "", name: "", objectFit: "cover", borderRadius: 8, label: "Image Frame" };
+    return {
+      w: 340, h: 240, src: "", name: "",
+      objectFit: "cover", borderRadius: 8, opacity: 1,
+      padding: 0, alignX: "center", alignY: "center",
+      overflow: "hidden", bgColor: "transparent", label: "Image Frame",
+    };
   }
 
   override canResize() { return true; }
@@ -53,15 +59,19 @@ export class ImageFrameShapeUtil extends BaseBoxShapeUtil<ImageFrameShape> {
   }
 
   component(shape: ImageFrameShape) {
-    const br = shape.props.borderRadius;
+    const { borderRadius: br, padding, alignX, alignY, overflow, bgColor, opacity, objectFit } = shape.props;
     const hasImage = !!shape.props.src;
+
+    const justifyMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end" };
+    const alignMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end" };
 
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
         pointerEvents: "all", position: "relative", overflow: "visible",
+        opacity,
       }}>
-        {/* Frame border */}
+        {/* Frame */}
         <div style={{
           width: "100%", height: "100%",
           border: "2px solid hsl(var(--border))",
@@ -75,17 +85,23 @@ export class ImageFrameShapeUtil extends BaseBoxShapeUtil<ImageFrameShape> {
 
           {/* Content area */}
           <div style={{
-            flex: 1, position: "relative", overflow: "hidden",
-            background: hasImage ? "#000" : "transparent",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            flex: 1, position: "relative",
+            overflow: overflow as any,
+            background: bgColor || "transparent",
+            padding,
+            display: "flex",
+            justifyContent: justifyMap[alignX] || "center",
+            alignItems: alignMap[alignY] || "center",
           }}>
             {hasImage ? (
               <img
                 src={shape.props.src}
                 alt={shape.props.name}
                 style={{
-                  width: "100%", height: "100%",
-                  objectFit: (shape.props.objectFit || "cover") as any,
+                  width: objectFit === "none" ? "auto" : "100%",
+                  height: objectFit === "none" ? "auto" : "100%",
+                  objectFit: (objectFit || "cover") as any,
+                  maxWidth: "100%", maxHeight: "100%",
                 }}
                 draggable={false}
               />
@@ -101,8 +117,20 @@ export class ImageFrameShapeUtil extends BaseBoxShapeUtil<ImageFrameShape> {
           </div>
         </div>
 
-        {/* Fit controls */}
-        {hasImage && <FitControls shape={shape} />}
+        {/* Layout Panel */}
+        <LayoutPanel
+          shapeId={shape.id}
+          shapeType="image-frame"
+          padding={padding}
+          borderRadius={br}
+          objectFit={objectFit}
+          alignX={alignX}
+          alignY={alignY}
+          overflow={overflow}
+          opacity={opacity}
+          bgColor={bgColor}
+        />
+
         <SourceDot shapeId={shape.id} shapeType="image-frame" />
       </HTMLContainer>
     );
@@ -179,61 +207,6 @@ function FrameLabel({ shape }: { shape: ImageFrameShape }) {
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {shape.props.label}
         </span>
-      )}
-    </div>
-  );
-}
-
-function FitControls({ shape }: { shape: ImageFrameShape }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div
-      style={{
-        position: "absolute", top: -32, right: 0, zIndex: 10,
-        display: "flex", gap: 2, pointerEvents: "all",
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      {!open ? (
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            background: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
-            borderRadius: 6, padding: "2px 8px", fontSize: 11, cursor: "pointer",
-            color: "hsl(var(--foreground))", whiteSpace: "nowrap",
-          }}
-        >
-          {FIT_LABELS[shape.props.objectFit] || "Cover"} ▾
-        </button>
-      ) : (
-        <div style={{
-          display: "flex", gap: 2, background: "hsl(var(--card))",
-          border: "1px solid hsl(var(--border))", borderRadius: 6, padding: 2,
-        }}>
-          {FIT_MODES.map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                const editor = (window as any).__tldrawEditor;
-                if (editor) {
-                  editor.updateShape({
-                    id: shape.id, type: "image-frame", props: { objectFit: mode },
-                  });
-                }
-                setOpen(false);
-              }}
-              style={{
-                padding: "2px 6px", fontSize: 11, borderRadius: 4, cursor: "pointer",
-                border: "none",
-                background: shape.props.objectFit === mode ? "hsl(var(--accent))" : "transparent",
-                color: "hsl(var(--foreground))",
-              }}
-            >
-              {FIT_LABELS[mode]}
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
