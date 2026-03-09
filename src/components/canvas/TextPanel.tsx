@@ -287,14 +287,21 @@ export default function TextPanel({ editor }: TextPanelProps) {
     setFontFamily(font);
     const mappedFont = FONT_TO_TLDRAW[font] ?? "sans";
 
-    if (customFontUrl) {
-      void applyTldrawSansOverride(font, customFontUrl);
+    if (mappedFont === "sans") {
+      if (customFontUrl) {
+        void applyUploadedSansOverride(font, customFontUrl);
+      } else if (font !== "Inter") {
+        applySansFamilyOverride(font);
+      } else {
+        clearTldrawSansOverride();
+      }
     } else {
       clearTldrawSansOverride();
     }
 
     editor.setStyleForSelectedShapes(DefaultFontStyle, mappedFont as any);
     editor.setStyleForNextShapes(DefaultFontStyle, mappedFont as any);
+    editor.setCurrentTool("text");
     setFontPickerOpen(false);
   };
 
@@ -307,6 +314,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
     setColor(cleanHex);
     editor.setStyleForSelectedShapes(DefaultColorStyle, nearestName as any);
     editor.setStyleForNextShapes(DefaultColorStyle, nearestName as any);
+    editor.setCurrentTool("text");
   };
 
   const handleAlignChange = (a: string) => {
@@ -327,6 +335,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
 
     editor.setStyleForSelectedShapes(DefaultSizeStyle, size as any);
     editor.setStyleForNextShapes(DefaultSizeStyle, size as any);
+    editor.setCurrentTool("text");
   };
 
   if (!visible) return null;
