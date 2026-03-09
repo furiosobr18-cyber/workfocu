@@ -4,23 +4,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 const CACHE_KEY = "canvas_local_cache";
+const CACHE_TS_KEY = "canvas_local_cache_ts";
 const CLOUD_SAVE_DELAY = 2000;
-const LOCAL_SAVE_THROTTLE = 500;
+const LOCAL_SAVE_THROTTLE = 400;
 
 function saveToLocalCache(snapshot: any) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
-  } catch {
-    // quota exceeded
-  }
+    localStorage.setItem(CACHE_TS_KEY, new Date().toISOString());
+  } catch {}
 }
 
-function loadFromLocalCache(): any | null {
+function loadFromLocalCache(): { snapshot: any; ts: string | null } {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) return JSON.parse(raw);
+    const ts = localStorage.getItem(CACHE_TS_KEY);
+    if (raw) return { snapshot: JSON.parse(raw), ts };
   } catch {}
-  return null;
+  return { snapshot: null, ts: null };
+}
+
+function isValidSnapshot(s: any): boolean {
+  return s && typeof s === "object" && "store" in s && "schema" in s;
 }
 
 export function useCanvasPersistence(editor: Editor | null) {
@@ -31,19 +36,21 @@ export function useCanvasPersistence(editor: Editor | null) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoadingRef = useRef(false);
+  const localCacheLoadedRef = useRef(false);
 
-  // Load from local cache IMMEDIATELY for zero-delay
+  // 1) Load from local cache IMMEDIATELY — zero delay
   useEffect(() => {
-    if (!editor) return;
-    const cached = loadFromLocalCache();
-    if (cached && typeof cached === "object" && "store" in cached && "schema" in cached) {
+    if (!editor || localCacheLoadedRef.current) return;
+    const { snapshot } = loadFromLocalCache();
+    if (isValidSnapshot(snapshot)) {
       try {
-        editor.store.loadSnapshot(cached);
+        editor.store.loadSnapshot(snapshot);
+        localCacheLoadedRef.current = true;
       } catch {}
     }
   }, [editor]);
 
-  // Load or create canvas document from cloud
+  // 2) Background cloud sync — only overwrite if cloud is newer
   useEffect(() => {
     if (!user || !editor) return;
 
@@ -60,18 +67,20 @@ export function useCanvasPersistence(editor: Editor | null) {
 
         if (existing && !error) {
           setDocumentId(existing.id);
-          if (existing.content) {
-            try {
-              const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
-              if (snapshot && typeof snapshot === "object" && "store" in snapshot && "schema" in snapshot) {
+          const { ts: localTs } = loadFromLocalCache();
+          const cloudNewer = !localTs || new Date(existing.updated_at) > new Date(localTs);
+
+          if (cloudNewer && existing.content) {
+            const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
+            if (isValidSnapshot(snapshot)) {
+              try {
                 editor.store.loadSnapshot(snapshot);
                 saveToLocalCache(snapshot);
-              }
-            } catch (e) {
-              console.warn("Failed to load canvas snapshot:", e);
+              } catch {}
             }
           }
         } else {
+          // Create new document
           const snapshot = editor.store.getSnapshot();
           const serialized = JSON.parse(JSON.stringify(snapshot));
           const { data: newDoc, error: createError } = await supabase
@@ -80,9 +89,7 @@ export function useCanvasPersistence(editor: Editor | null) {
             .select("id")
             .single();
 
-          if (newDoc && !createError) {
-            setDocumentId(newDoc.id);
-          }
+          if (newDoc && !createError) setDocumentId(newDoc.id);
         }
       } catch (e) {
         console.error("Error loading canvas:", e);
@@ -117,14 +124,13 @@ export function useCanvasPersistence(editor: Editor | null) {
     }
   }, [editor, documentId, user]);
 
-  // Throttled local + debounced cloud save on changes
+  // Listen for changes — throttled local + debounced cloud
   useEffect(() => {
     if (!editor || !documentId) return;
 
     const unsub = editor.store.listen(() => {
       if (isLoadingRef.current) return;
 
-      // Throttled local cache save
       if (!localSaveTimeoutRef.current) {
         localSaveTimeoutRef.current = setTimeout(() => {
           localSaveTimeoutRef.current = null;
@@ -135,7 +141,6 @@ export function useCanvasPersistence(editor: Editor | null) {
         }, LOCAL_SAVE_THROTTLE);
       }
 
-      // Debounced cloud save
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(saveToCloud, CLOUD_SAVE_DELAY);
     });
