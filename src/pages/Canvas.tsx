@@ -14,6 +14,7 @@ import { FileShapeUtil } from "@/components/canvas/FileShape";
 import { ChatShapeUtil } from "@/components/canvas/ChatShape";
 import { VideoShapeUtil } from "@/components/canvas/VideoShape";
 import CanvasToolbar from "@/components/canvas/CanvasToolbar";
+import TextPanel from "@/components/canvas/TextPanel";
 import { ConnectionProvider, useConnections } from "@/components/canvas/ConnectionContext";
 import ConnectionOverlay from "@/components/canvas/ConnectionOverlay";
 import { ImageFrameTool } from "@/components/canvas/ImageFrameTool";
