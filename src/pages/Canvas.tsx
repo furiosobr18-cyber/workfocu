@@ -272,12 +272,12 @@ function CanvasInner() {
                 <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md px-2 py-1.5">
                   {isSaving ? (
                     <>
-                      <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
                       <span className="text-xs text-muted-foreground">Salvando...</span>
                     </>
                   ) : lastSaved ? (
                     <>
-                      <Cloud className="w-3.5 h-3.5 text-green-500" />
+                      <Cloud className="w-3.5 h-3.5 text-primary" />
                       <span className="text-xs text-muted-foreground">Salvo</span>
                     </>
                   ) : (

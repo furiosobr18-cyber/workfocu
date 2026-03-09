@@ -1,16 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Editor, TLRecord, createTLStore, defaultShapeUtils, SerializedStore, StoreSnapshot } from "tldraw";
+import { Editor, TLRecord, StoreSnapshot } from "tldraw";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-
-interface CanvasDocument {
-  id: string;
-  user_id: string;
-  name: string;
-  content: any;
-  created_at: string;
-  updated_at: string;
-}
 
 export function useCanvasPersistence(editor: Editor | null) {
   const { user } = useAuth();
@@ -43,21 +34,24 @@ export function useCanvasPersistence(editor: Editor | null) {
           // Load content into editor
           if (existing.content) {
             try {
-              const snapshot = existing.content as StoreSnapshot<TLRecord>;
-              editor.store.loadSnapshot(snapshot);
+              const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
+              if (snapshot && typeof snapshot === 'object' && 'store' in snapshot && 'schema' in snapshot) {
+                editor.store.loadSnapshot(snapshot);
+              }
             } catch (e) {
               console.warn("Failed to load canvas snapshot:", e);
             }
           }
         } else {
           // Create new document
+          const snapshot = editor.store.getSnapshot();
           const { data: newDoc, error: createError } = await supabase
             .from("canvas_documents")
-            .insert({
+            .insert([{
               user_id: user.id,
               name: "Meu Canvas",
-              content: editor.store.getSnapshot(),
-            })
+              content: JSON.parse(JSON.stringify(snapshot)),
+            }])
             .select()
             .single();
 
@@ -85,7 +79,7 @@ export function useCanvasPersistence(editor: Editor | null) {
       
       const { error } = await supabase
         .from("canvas_documents")
-        .update({ content: snapshot })
+        .update({ content: JSON.parse(JSON.stringify(snapshot)) })
         .eq("id", documentId)
         .eq("user_id", user.id);
 
