@@ -227,6 +227,7 @@ function CanvasInner() {
           />
         </div>
         <ConnectionOverlay editor={editor} />
+        <TextPanel editor={editor} />
         <CanvasToolbar editor={editor} />
       </main>
     </div>
