@@ -102,14 +102,8 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
       {/* Separator */}
       <div className="w-px h-5 bg-border mx-1" />
 
-      {/* Custom shape buttons */}
-      <button
-        onClick={() => addShape("youtube")}
-        title="YouTube"
-        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-      >
-        <Youtube className="w-4 h-4 text-destructive" />
-      </button>
+      {/* Social embed drawer */}
+      <SocialDrawer addShape={addShape} />
       <button
         onClick={() => selectTool("image-frame")}
         title="Imagem (Frame)"
