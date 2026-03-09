@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { YouTubeShapeUtil } from "@/components/canvas/YouTubeShape";
+import { TikTokShapeUtil } from "@/components/canvas/TikTokShape";
+import { InstagramShapeUtil } from "@/components/canvas/InstagramShape";
 import { ImageShapeUtil } from "@/components/canvas/ImageShape";
 import { FileShapeUtil } from "@/components/canvas/FileShape";
 import { ChatShapeUtil } from "@/components/canvas/ChatShape";
