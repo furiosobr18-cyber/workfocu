@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Editor } from "tldraw";
+import { Editor, DefaultColorStyle, DefaultFontStyle, DefaultSizeStyle } from "tldraw";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Plus, ChevronDown, Type } from "lucide-react";
@@ -10,27 +10,85 @@ interface TextPanelProps {
 }
 
 const WEIGHT_LABELS: Record<number, string> = {
-  100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular",
-  500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
+  100: "Thin",
+  200: "ExtraLight",
+  300: "Light",
+  400: "Regular",
+  500: "Medium",
+  600: "SemiBold",
+  700: "Bold",
+  800: "ExtraBold",
+  900: "Black",
 };
 
-// tldraw color names mapped to hex
 const TLDRAW_COLORS: Record<string, string> = {
-  black: "000000", blue: "4263eb", green: "099268", grey: "adb5bd",
-  "light-blue": "4dabf7", "light-green": "40c057", "light-red": "ff8787",
-  "light-violet": "b197fc", orange: "f76707", red: "e03131",
-  violet: "7048e8", white: "ffffff", yellow: "ffc078",
+  black: "000000",
+  blue: "4263eb",
+  green: "099268",
+  grey: "adb5bd",
+  "light-blue": "4dabf7",
+  "light-green": "40c057",
+  "light-red": "ff8787",
+  "light-violet": "b197fc",
+  orange: "f76707",
+  red: "e03131",
+  violet: "7048e8",
+  white: "ffffff",
+  yellow: "ffc078",
 };
-const HEX_TO_TLDRAW: Record<string, string> = {};
-Object.entries(TLDRAW_COLORS).forEach(([name, hex]) => { HEX_TO_TLDRAW[hex] = name; });
 
-const FONT_TO_TLDRAW: Record<string, string> = {
-  "Inter": "sans", "Arial": "sans", "Helvetica": "sans", "Roboto": "sans",
-  "Georgia": "serif", "Times New Roman": "serif", "Palatino": "serif", "Merriweather": "serif",
-  "JetBrains Mono": "mono", "Fira Code": "mono", "Source Code Pro": "mono", "Courier New": "mono",
+const FONT_TO_TLDRAW: Record<string, "sans" | "serif" | "mono" | "draw"> = {
+  Inter: "sans",
+  Arial: "sans",
+  Helvetica: "sans",
+  Roboto: "sans",
+  Georgia: "serif",
+  "Times New Roman": "serif",
+  Palatino: "serif",
+  Merriweather: "serif",
+  "JetBrains Mono": "mono",
+  "Fira Code": "mono",
+  "Source Code Pro": "mono",
+  "Courier New": "mono",
   "Comic Sans MS": "draw",
 };
-const TLDRAW_TO_FONT: Record<string, string> = { sans: "Inter", serif: "Georgia", mono: "JetBrains Mono", draw: "Comic Sans MS" };
+
+const TLDRAW_TO_FONT: Record<string, string> = {
+  sans: "Inter",
+  serif: "Georgia",
+  mono: "JetBrains Mono",
+  draw: "Comic Sans MS",
+};
+
+function hexToRgb(hex: string) {
+  const clean = hex.replace("#", "").padStart(6, "0").slice(0, 6);
+  return {
+    r: Number.parseInt(clean.slice(0, 2), 16),
+    g: Number.parseInt(clean.slice(2, 4), 16),
+    b: Number.parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+function getNearestTldrawColorName(hex: string): keyof typeof TLDRAW_COLORS {
+  const source = hexToRgb(hex);
+  let bestName: keyof typeof TLDRAW_COLORS = "black";
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  (Object.keys(TLDRAW_COLORS) as Array<keyof typeof TLDRAW_COLORS>).forEach((name) => {
+    const target = hexToRgb(TLDRAW_COLORS[name]);
+    const distance =
+      (source.r - target.r) ** 2 +
+      (source.g - target.g) ** 2 +
+      (source.b - target.b) ** 2;
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestName = name;
+    }
+  });
+
+  return bestName;
+}
 
 export default function TextPanel({ editor }: TextPanelProps) {
   const [visible, setVisible] = useState(false);
@@ -45,24 +103,57 @@ export default function TextPanel({ editor }: TextPanelProps) {
   const [lineUnit, setLineUnit] = useState<string>("Em");
   const [align, setAlign] = useState<string>("start");
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
-  
-  // Track which shape we last synced from, to avoid overwriting user edits
+
   const lastSyncedShapeId = useRef<string | null>(null);
-  const skipNextSync = useRef(false);
+  const sansOverrideFontRef = useRef<string>("Inter");
+
+  const applyTldrawSansOverride = useCallback((fontName: string, fontUrl: string) => {
+    sansOverrideFontRef.current = fontName;
+
+    const styleId = "tldraw-sans-font-override";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    styleEl.textContent = `
+      @font-face {
+        font-family: 'tldraw_sans';
+        src: url('${fontUrl}');
+        font-display: swap;
+      }
+    `;
+
+    localStorage.setItem("canvas_sans_override_font", fontName);
+    localStorage.setItem("canvas_sans_override_url", fontUrl);
+  }, []);
+
+  const clearTldrawSansOverride = useCallback(() => {
+    const styleEl = document.getElementById("tldraw-sans-font-override");
+    if (styleEl) styleEl.remove();
+    sansOverrideFontRef.current = "Inter";
+    localStorage.removeItem("canvas_sans_override_font");
+    localStorage.removeItem("canvas_sans_override_url");
+  }, []);
+
+  useEffect(() => {
+    const savedFont = localStorage.getItem("canvas_sans_override_font");
+    const savedUrl = localStorage.getItem("canvas_sans_override_url");
+    if (savedFont && savedUrl) {
+      applyTldrawSansOverride(savedFont, savedUrl);
+      setFontFamily(savedFont);
+    }
+  }, [applyTldrawSansOverride]);
 
   const syncFromEditor = useCallback(() => {
     if (!editor) return;
-    
-    // If we just made a change, skip this sync cycle
-    if (skipNextSync.current) {
-      skipNextSync.current = false;
-      return;
-    }
-    
+
     const currentTool = editor.getCurrentToolId();
     const shapes = editor.getSelectedShapes();
     const textShape = shapes.find((s) => s.type === "text" || s.type === "geo");
-    
+
     if (currentTool === "text" || textShape) {
       setVisible(true);
     } else {
@@ -70,20 +161,27 @@ export default function TextPanel({ editor }: TextPanelProps) {
       return;
     }
 
-    // Only sync props when a DIFFERENT shape is selected
     if (textShape && textShape.id !== lastSyncedShapeId.current) {
       lastSyncedShapeId.current = textShape.id;
       const props = textShape.props as any;
+
       if (props.font) {
-        setFontFamily(TLDRAW_TO_FONT[props.font] || "Inter");
+        if (props.font === "sans" && sansOverrideFontRef.current && sansOverrideFontRef.current !== "Inter") {
+          setFontFamily(sansOverrideFontRef.current);
+        } else {
+          setFontFamily(TLDRAW_TO_FONT[props.font] || "Inter");
+        }
       }
+
       if (props.size) {
         const sizeMap: Record<string, number> = { s: 12, m: 16, l: 24, xl: 36 };
         setFontSize(sizeMap[props.size] || 16);
       }
+
       if (props.color) {
         setColor(TLDRAW_COLORS[props.color] || "000000");
       }
+
       if (props.align) setAlign(props.align);
     }
   }, [editor]);
@@ -95,40 +193,52 @@ export default function TextPanel({ editor }: TextPanelProps) {
     return () => unsub();
   }, [editor, syncFromEditor]);
 
-  const updateProp = (key: string, value: any) => {
+  const handleFontSelect = (font: string, customFontUrl?: string) => {
     if (!editor) return;
-    skipNextSync.current = true;
-    const shapes = editor.getSelectedShapes().filter((s) => s.type === "text" || s.type === "geo");
-    shapes.forEach((shape) => {
-      editor.updateShape({ id: shape.id, type: shape.type, props: { [key]: value } });
-    });
-  };
 
-  const handleFontSelect = (font: string) => {
     setFontFamily(font);
-    const tldrawFont = FONT_TO_TLDRAW[font] || "sans";
-    updateProp("font", tldrawFont);
+    const mappedFont = FONT_TO_TLDRAW[font] ?? "sans";
+
+    if (customFontUrl) {
+      applyTldrawSansOverride(font, customFontUrl);
+    } else if (font === "Inter") {
+      clearTldrawSansOverride();
+    }
+
+    editor.setStyleForSelectedShapes(DefaultFontStyle, mappedFont as any);
+    editor.setStyleForNextShapes(DefaultFontStyle, mappedFont as any);
     setFontPickerOpen(false);
   };
 
   const handleColorChange = (hex: string) => {
-    setColor(hex);
-    // Find closest tldraw color
-    const tldrawColor = HEX_TO_TLDRAW[hex.toLowerCase()] || "black";
-    updateProp("color", tldrawColor);
+    if (!editor) return;
+
+    const cleanHex = hex.replace("#", "").slice(0, 6).toLowerCase();
+    const nearestName = getNearestTldrawColorName(cleanHex);
+
+    setColor(cleanHex);
+    editor.setStyleForSelectedShapes(DefaultColorStyle, nearestName as any);
+    editor.setStyleForNextShapes(DefaultColorStyle, nearestName as any);
   };
 
   const handleAlignChange = (a: string) => {
     setAlign(a);
-    updateProp("align", a);
+
+    if (!editor) return;
+    const shapes = editor.getSelectedShapes().filter((s) => s.type === "text" || s.type === "geo");
+    shapes.forEach((shape) => {
+      editor.updateShape({ id: shape.id, type: shape.type, props: { align: a } as any });
+    });
   };
 
   const handleSizeChange = (val: number) => {
+    if (!editor) return;
+
     setFontSize(val);
-    if (val <= 14) updateProp("size", "s");
-    else if (val <= 20) updateProp("size", "m");
-    else if (val <= 30) updateProp("size", "l");
-    else updateProp("size", "xl");
+    const size = val <= 14 ? "s" : val <= 20 ? "m" : val <= 30 ? "l" : "xl";
+
+    editor.setStyleForSelectedShapes(DefaultSizeStyle, size as any);
+    editor.setStyleForNextShapes(DefaultSizeStyle, size as any);
   };
 
   if (!visible) return null;
@@ -179,7 +289,9 @@ export default function TextPanel({ editor }: TextPanelProps) {
                   className="flex-1 bg-secondary rounded-md px-2.5 py-1.5 text-xs text-foreground border-none outline-none"
                 >
                   {Object.entries(WEIGHT_LABELS).map(([w, label]) => (
-                    <option key={w} value={w}>{label}</option>
+                    <option key={w} value={w}>
+                      {label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -190,14 +302,14 @@ export default function TextPanel({ editor }: TextPanelProps) {
                 <input
                   type="color"
                   value={`#${color}`}
-                  onChange={(e) => handleColorChange(e.target.value.replace("#", ""))}
+                  onChange={(e) => handleColorChange(e.target.value)}
                   className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent p-0"
                 />
                 <Input
                   value={color}
-                  onChange={(e) => handleColorChange(e.target.value.replace("#", "").slice(0, 6))}
+                  onChange={(e) => handleColorChange(e.target.value)}
                   className="flex-1 h-7 text-xs bg-secondary border-none font-mono"
-                  maxLength={6}
+                  maxLength={7}
                 />
               </div>
             </Row>
@@ -248,7 +360,9 @@ export default function TextPanel({ editor }: TextPanelProps) {
                     key={value}
                     onClick={() => handleAlignChange(value)}
                     className={`p-1.5 rounded transition-colors ${
-                      align === value ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      align === value
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -270,7 +384,7 @@ export default function TextPanel({ editor }: TextPanelProps) {
   );
 }
 
-function Row({ label, children, icon }: { label: string; children: React.ReactNode; icon?: boolean }) {
+function Row({ label, children }: { label: string; children: React.ReactNode; icon?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground w-14 shrink-0">{label}</span>

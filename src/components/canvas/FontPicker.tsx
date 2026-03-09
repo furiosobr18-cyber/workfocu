@@ -45,7 +45,7 @@ interface FontPickerProps {
   open: boolean;
   onClose: () => void;
   currentFont: string;
-  onSelectFont: (font: string) => void;
+  onSelectFont: (font: string, customFontUrl?: string) => void;
 }
 
 type Category = "All" | "Web" | "Custom" | "Google";
@@ -58,13 +58,11 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
   const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Fetch custom fonts on mount and when user changes
   useEffect(() => {
     if (!user) return;
     fetchCustomFonts();
   }, [user]);
 
-  // Inject custom fonts CSS whenever customFonts changes
   useEffect(() => {
     customFonts.forEach((f) => {
       const id = `cf-${f.id}`;
@@ -72,7 +70,10 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
       const { data } = supabase.storage.from("custom-fonts").getPublicUrl(f.storage_path);
       const ext = f.file_name.split(".").pop()?.toLowerCase() || "truetype";
       const formatMap: Record<string, string> = {
-        ttf: "truetype", otf: "opentype", woff: "woff", woff2: "woff2",
+        ttf: "truetype",
+        otf: "opentype",
+        woff: "woff",
+        woff2: "woff2",
       };
       const format = formatMap[ext] || "truetype";
       const style = document.createElement("style");
@@ -99,30 +100,30 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
     setUploading(true);
     const fontName = file.name.replace(/\.[^.]+$/, "");
     const storagePath = `${user.id}/${Date.now()}_${file.name}`;
-    
+
     const { error: uploadErr } = await supabase.storage.from("custom-fonts").upload(storagePath, file, {
       contentType: file.type || "font/ttf",
     });
-    if (uploadErr) { 
-      console.error("Upload error:", uploadErr);
-      toast.error("Erro ao fazer upload: " + uploadErr.message); 
-      setUploading(false); 
-      return; 
+    if (uploadErr) {
+      toast.error("Erro ao fazer upload: " + uploadErr.message);
+      setUploading(false);
+      return;
     }
-    
+
     const { error: dbErr } = await supabase.from("custom_fonts").insert({
-      user_id: user.id, name: fontName, file_name: file.name, storage_path: storagePath,
+      user_id: user.id,
+      name: fontName,
+      file_name: file.name,
+      storage_path: storagePath,
     });
-    if (dbErr) { 
-      console.error("DB error:", dbErr);
-      toast.error("Erro ao salvar fonte: " + dbErr.message); 
-      setUploading(false); 
-      return; 
+    if (dbErr) {
+      toast.error("Erro ao salvar fonte: " + dbErr.message);
+      setUploading(false);
+      return;
     }
-    
+
     toast.success(`Fonte "${fontName}" adicionada!`);
     await fetchCustomFonts();
-    // Auto-switch to Custom category so the user sees their new font
     setCategory("Custom");
     setUploading(false);
     e.target.value = "";
@@ -148,6 +149,12 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
     return list;
   };
 
+  const getCustomFontUrl = (fontName: string) => {
+    const custom = customFonts.find((f) => f.name === fontName);
+    if (!custom) return undefined;
+    return supabase.storage.from("custom-fonts").getPublicUrl(custom.storage_path).data.publicUrl;
+  };
+
   if (!open) return null;
 
   const categories: Category[] = ["All", "Web", "Custom", "Google"];
@@ -159,7 +166,6 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
         className="bg-card border border-border rounded-xl w-[320px] max-h-[520px] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <span className="text-sm font-semibold text-foreground">Fonts</span>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -167,7 +173,6 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
           </button>
         </div>
 
-        {/* Search */}
         <div className="px-4 pb-2">
           <Input
             placeholder="Search"
@@ -177,7 +182,6 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
           />
         </div>
 
-        {/* Category dropdown */}
         <div className="px-4 pb-2 relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -191,8 +195,13 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
               {categories.map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => { setCategory(cat); setDropdownOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors ${category === cat ? "bg-primary text-primary-foreground" : "text-foreground"}`}
+                  onClick={() => {
+                    setCategory(cat);
+                    setDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors ${
+                    category === cat ? "bg-primary text-primary-foreground" : "text-foreground"
+                  }`}
                 >
                   {cat}
                 </button>
@@ -201,23 +210,21 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
           )}
         </div>
 
-        {/* Font list */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-4 py-1 flex flex-col gap-0.5">
             {fonts.map((font) => {
               const isGoogle = GOOGLE_FONTS.includes(font);
+              const customUrl = getCustomFontUrl(font);
               return (
                 <button
                   key={font}
                   onMouseEnter={() => isGoogle && loadGoogleFont(font)}
                   onClick={() => {
                     if (isGoogle) loadGoogleFont(font);
-                    onSelectFont(font);
+                    onSelectFont(font, customUrl);
                   }}
                   className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                    currentFont === font
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-accent"
+                    currentFont === font ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent"
                   }`}
                   style={{ fontFamily: `'${font}', sans-serif` }}
                 >
@@ -225,13 +232,10 @@ export default function FontPicker({ open, onClose, currentFont, onSelectFont }:
                 </button>
               );
             })}
-            {fonts.length === 0 && (
-              <p className="text-xs text-muted-foreground py-4 text-center">Nenhuma fonte encontrada</p>
-            )}
+            {fonts.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">Nenhuma fonte encontrada</p>}
           </div>
         </ScrollArea>
 
-        {/* Bottom area */}
         <div className="border-t border-border p-3 flex flex-col gap-2">
           {category === "Custom" && (
             <>
