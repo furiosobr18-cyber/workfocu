@@ -10,15 +10,12 @@ const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   
-  const [stats, setStats] = useState({
-    pendingTasks: 0,
-    completedToday: 0,
-    pomodoroSessions: 0,
-    notesCount: 0
-  });
-  const [todayEvents, setTodayEvents] = useState<any[]>([]);
-  const [recentTasks, setRecentTasks] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedDash = (() => { try { const r = localStorage.getItem("dash_cache"); return r ? JSON.parse(r) : null; } catch { return null; } })();
+  
+  const [stats, setStats] = useState(cachedDash?.stats ?? { pendingTasks: 0, completedToday: 0, pomodoroSessions: 0, notesCount: 0 });
+  const [todayEvents, setTodayEvents] = useState<any[]>(cachedDash?.todayEvents ?? []);
+  const [recentTasks, setRecentTasks] = useState<any[]>(cachedDash?.recentTasks ?? []);
+  const [isLoading, setIsLoading] = useState(!cachedDash);
 
   useEffect(() => {
     if (!loading && !user) {
