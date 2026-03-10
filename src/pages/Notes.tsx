@@ -262,12 +262,7 @@ const Notes = () => {
     
     if (data) {
       setNotes([data, ...notes]);
-      // Add to brain
       await addNoteToBrain(brainId, data.id);
-      setSelectedNote(data);
-      setEditContent("");
-      setEditMode("edit");
-      setSelectedBrain(null); // Go to note editing
       toast({ title: "Nota criada no cérebro!" });
       return data;
     }
