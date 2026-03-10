@@ -30,9 +30,25 @@ export const BRAIN_COLORS = [
 ];
 
 export const useBrains = (userId: string | undefined) => {
-  const [brains, setBrains] = useState<Brain[]>([]);
-  const [brainNotes, setBrainNotes] = useState<BrainNote[]>([]);
+  const [brains, setBrainsState] = useState<Brain[]>(() => { try { const r = localStorage.getItem("brains_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
+  const [brainNotes, setBrainNotesState] = useState<BrainNote[]>(() => { try { const r = localStorage.getItem("brain_notes_cache"); return r ? JSON.parse(r) : []; } catch { return []; } });
   const [loading, setLoading] = useState(true);
+
+  const setBrains = useCallback((updater: Brain[] | ((prev: Brain[]) => Brain[])) => {
+    setBrainsState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { localStorage.setItem("brains_cache", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const setBrainNotes = useCallback((updater: BrainNote[] | ((prev: BrainNote[]) => BrainNote[])) => {
+    setBrainNotesState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { localStorage.setItem("brain_notes_cache", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   const fetchBrains = useCallback(async () => {
     if (!userId) return;
@@ -49,7 +65,7 @@ export const useBrains = (userId: string | undefined) => {
     }
 
     setBrains((data || []) as Brain[]);
-  }, [userId]);
+  }, [userId, setBrains]);
 
   const fetchBrainNotes = useCallback(async () => {
     if (!userId) return;
@@ -65,7 +81,7 @@ export const useBrains = (userId: string | undefined) => {
     }
 
     setBrainNotes(data || []);
-  }, [userId]);
+  }, [userId, setBrainNotes]);
 
   useEffect(() => {
     if (userId) {
