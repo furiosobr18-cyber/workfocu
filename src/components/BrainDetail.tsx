@@ -73,6 +73,8 @@ const BrainDetail = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(brain.name);
   const [showAddNotes, setShowAddNotes] = useState(false);
+  const [showCreateNote, setShowCreateNote] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
   const [viewMode, setViewMode] = useState<"content" | "graph">("content");
 
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
