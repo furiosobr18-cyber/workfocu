@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon, List, GitBranch } from "lucide-react";
+import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon, List, GitBranch, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -397,7 +397,11 @@ const Notes = () => {
     setIsLinking(false);
     setEditMode("edit");
     setActiveView("notes");
-    setSelectedBrain(null);
+    // Keep selectedBrain reference if the note belongs to a brain
+    const noteBrain = getBrainForNote(note.id);
+    if (!noteBrain) {
+      setSelectedBrain(null);
+    }
   };
 
   const getConnectedNotes = (noteId: string) => {
@@ -492,6 +496,110 @@ const Notes = () => {
     const brainNotes = notes.filter(n => brainNoteIds.includes(n.id));
     const childBrains = getChildBrains(selectedBrain.id);
     
+    // If a note is selected within the brain, show only the editor
+    if (selectedNote && brainNoteIds.includes(selectedNote.id)) {
+      return (
+        <div className="flex min-h-screen bg-background">
+          <SidebarNav />
+          <main className="flex-1 p-6 overflow-hidden">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Back button */}
+              <div className="mb-4">
+                <Button variant="ghost" size="sm" onClick={() => { setSelectedNote(null); setEditContent(""); }}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar para {selectedBrain.name}
+                </Button>
+              </div>
+
+              <Card className="flex-1 flex flex-col min-w-0">
+                {/* Note Header */}
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${getDotClass(selectedNote.color)}`} />
+                      <h2 className="text-lg font-semibold text-foreground truncate">{selectedNote.title}</h2>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                        {NOTE_COLORS.map((color) => (
+                          <button
+                            key={color.name}
+                            onClick={() => updateNoteColor(selectedNote.id, color.name)}
+                            className={`w-5 h-5 rounded-full transition-transform ${color.dot} ${
+                              selectedNote.color === color.name ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-110'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setSelectedNote(null); setEditContent(""); }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Editor/Preview Toggle */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+                  <div className="flex gap-1">
+                    <Button variant={editMode === "edit" ? "secondary" : "ghost"} size="sm" onClick={() => setEditMode("edit")} className="h-8">
+                      <Edit3 className="w-3.5 h-3.5 mr-1.5" />
+                      Editar
+                    </Button>
+                    <Button variant={editMode === "preview" ? "secondary" : "ghost"} size="sm" onClick={() => setEditMode("preview")} className="h-8">
+                      <Eye className="w-3.5 h-3.5 mr-1.5" />
+                      Preview
+                    </Button>
+                  </div>
+                  <Button size="sm" onClick={updateNote} className="h-8">Salvar</Button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  {editMode === "preview" ? (
+                    <div className="h-full overflow-auto p-6">
+                      <div className="prose prose-sm dark:prose-invert max-w-none font-mono text-sm">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => <h1 className="text-2xl font-bold text-foreground mb-4 mt-6 first:mt-0 font-mono">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-xl font-bold text-foreground mb-3 mt-5 font-mono">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mb-2 mt-4 font-mono">{children}</h3>,
+                            p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed font-mono">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc list-inside text-foreground mb-3 space-y-1 font-mono">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal list-inside text-foreground mb-3 space-y-1 font-mono">{children}</ol>,
+                            li: ({ children }) => <li className="text-foreground font-mono">{children}</li>,
+                            strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                            em: ({ children }) => <em className="italic">{children}</em>,
+                            code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary">{children}</code>,
+                            pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-3 font-mono">{children}</pre>,
+                            blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground mb-3 font-mono">{children}</blockquote>,
+                            a: ({ children, href }) => <a href={href} className="text-primary underline hover:opacity-80 font-mono">{children}</a>,
+                            hr: () => <hr className="border-border my-4" />,
+                          }}
+                        >
+                          {editContent || "*Comece a escrever...*"}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  ) : (
+                    <Textarea
+                      placeholder="Escreva em Markdown..."
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="h-full resize-none border-0 rounded-none focus-visible:ring-0 font-mono text-sm p-6"
+                    />
+                  )}
+                </div>
+              </Card>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen bg-background">
         <SidebarNav />
