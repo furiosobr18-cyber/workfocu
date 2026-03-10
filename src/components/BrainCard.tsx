@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Brain, BRAIN_COLORS } from "@/hooks/useBrains";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ interface BrainCardProps {
   onDelete: () => void;
 }
 
-const BrainCard = ({ brain, noteCount, subBrainCount = 0, onClick, onDelete }: BrainCardProps) => {
+const BrainCard = memo(({ brain, noteCount, subBrainCount = 0, onClick, onDelete }: BrainCardProps) => {
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
 
   return (
@@ -53,6 +54,8 @@ const BrainCard = ({ brain, noteCount, subBrainCount = 0, onClick, onDelete }: B
       </div>
     </Card>
   );
-};
+});
+
+BrainCard.displayName = "BrainCard";
 
 export default BrainCard;
