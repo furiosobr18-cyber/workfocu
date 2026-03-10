@@ -171,34 +171,7 @@ const BrainDetail = ({
         </div>
       </div>
 
-      {/* Add Notes Panel */}
-      {showAddNotes && looseNotes.length > 0 && (
-        <Card className="p-4 mb-4 border-dashed">
-          <p className="text-sm text-muted-foreground mb-3">Notas disponíveis para adicionar:</p>
-          <div className="flex flex-wrap gap-2">
-            {looseNotes.map((note) => (
-              <Badge
-                key={note.id}
-                variant="outline"
-                className="cursor-pointer hover:bg-accent"
-                onClick={() => {
-                  onAddNote(note.id);
-                  setShowAddNotes(false);
-                }}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                {note.title}
-              </Badge>
-            ))}
-          </div>
-        </Card>
-      )}
 
-      {showAddNotes && looseNotes.length === 0 && (
-        <Card className="p-4 mb-4 border-dashed text-center text-muted-foreground">
-          Todas as notas já estão em cérebros.
-        </Card>
-      )}
 
       {/* Content */}
       <Card className="flex-1 overflow-hidden">
@@ -288,17 +261,6 @@ const BrainDetail = ({
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Criar Nota
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowAddNotes(!showAddNotes);
-                      setShowCreateNote(false);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar Existente
                   </Button>
                 </div>
               </div>
