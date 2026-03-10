@@ -336,7 +336,7 @@ const BrainDetail = ({
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-              )
+              )}
 
               {brainNotes.length === 0 ? (
                 <Card className="p-6 border-dashed text-center">
