@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +9,7 @@ interface StatCardProps {
   valueColor?: "default" | "success";
 }
 
-const StatCard = ({ label, value, icon: Icon, valueColor = "default" }: StatCardProps) => {
+const StatCard = memo(({ label, value, icon: Icon, valueColor = "default" }: StatCardProps) => {
   return (
     <div className="stat-card">
       <div className="flex items-center justify-between">
@@ -25,6 +26,8 @@ const StatCard = ({ label, value, icon: Icon, valueColor = "default" }: StatCard
       </span>
     </div>
   );
-};
+});
+
+StatCard.displayName = "StatCard";
 
 export default StatCard;

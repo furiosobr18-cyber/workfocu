@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Flame, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
@@ -16,13 +17,13 @@ const navItems = [
   { icon: Flame, label: "DG", path: "/dg" },
 ];
 
-const SidebarNav = () => {
+const SidebarNav = memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const { error } = await signOut();
     
     if (error) {
@@ -39,9 +40,8 @@ const SidebarNav = () => {
       description: "Você saiu da sua conta.",
     });
     navigate("/");
-  };
+  }, [signOut, navigate]);
 
-  // Truncate email for display
   const displayEmail = user?.email 
     ? user.email.length > 25 
       ? user.email.substring(0, 22) + "..." 
@@ -50,13 +50,11 @@ const SidebarNav = () => {
 
   return (
     <aside className="w-64 bg-sidebar h-screen flex flex-col border-r border-sidebar-border">
-      {/* Logo */}
       <div className="p-4 flex items-center gap-3">
         <img src={logoIcon} alt="Logo" className="w-10 h-10 rounded-lg" />
         <span className="font-semibold text-sidebar-foreground">Foco no Trabalho</span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => (
@@ -74,10 +72,8 @@ const SidebarNav = () => {
             </li>
           ))}
         </ul>
-
       </nav>
 
-      {/* Bottom Section */}
       <div className="p-3 border-t border-sidebar-border space-y-1">
         <div className="px-3 py-2 text-sm text-muted-foreground truncate">
           {displayEmail}
@@ -102,6 +98,8 @@ const SidebarNav = () => {
       </div>
     </aside>
   );
-};
+});
+
+SidebarNav.displayName = "SidebarNav";
 
 export default SidebarNav;

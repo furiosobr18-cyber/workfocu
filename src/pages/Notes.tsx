@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, X, Link2, Unlink, Network, Eye, Edit3, Search, Brain as BrainIcon, List, GitBranch, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -420,14 +420,17 @@ const Notes = () => {
     return NOTE_COLORS.find(c => c.name === color)?.dot || NOTE_COLORS[0].dot;
   };
 
-  // Get loose notes (notes not in any brain)
-  const looseNoteIds = getLooseNoteIds(notes.map(n => n.id));
-  const looseNotes = notes.filter(n => looseNoteIds.includes(n.id));
+  // Get loose notes (notes not in any brain) - memoized
+  const looseNoteIds = useMemo(() => getLooseNoteIds(notes.map(n => n.id)), [notes, getLooseNoteIds]);
+  const looseNotes = useMemo(() => notes.filter(n => looseNoteIds.includes(n.id)), [notes, looseNoteIds]);
   
-  const filteredNotes = looseNotes.filter(n => 
-    n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (n.content && n.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredNotes = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return looseNotes.filter(n => 
+      n.title.toLowerCase().includes(q) ||
+      (n.content && n.content.toLowerCase().includes(q))
+    );
+  }, [looseNotes, searchQuery]);
 
   const handleCreateBrain = async (name: string, color: string) => {
     if (isCreatingSubBrain && selectedBrain) {
@@ -478,6 +481,8 @@ const Notes = () => {
     setShowCreateBrainDialog(true);
   };
 
+  const connectedNotes = useMemo(() => selectedNote ? getConnectedNotes(selectedNote.id) : [], [selectedNote, noteLinks, notes]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -487,8 +492,6 @@ const Notes = () => {
   }
 
   if (!user) return null;
-
-  const connectedNotes = selectedNote ? getConnectedNotes(selectedNote.id) : [];
 
   // Brain detail view
   if (selectedBrain) {
