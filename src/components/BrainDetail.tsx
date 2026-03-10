@@ -262,17 +262,6 @@ const BrainDetail = ({
                     <Plus className="w-4 h-4 mr-1" />
                     Criar Nota
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowAddNotes(!showAddNotes);
-                      setShowCreateNote(false);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar Existente
-                  </Button>
                 </div>
               </div>
 
