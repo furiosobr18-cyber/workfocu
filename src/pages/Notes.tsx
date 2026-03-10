@@ -481,6 +481,8 @@ const Notes = () => {
     setShowCreateBrainDialog(true);
   };
 
+  const connectedNotes = useMemo(() => selectedNote ? getConnectedNotes(selectedNote.id) : [], [selectedNote, noteLinks, notes]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -490,8 +492,6 @@ const Notes = () => {
   }
 
   if (!user) return null;
-
-  const connectedNotes = useMemo(() => selectedNote ? getConnectedNotes(selectedNote.id) : [], [selectedNote, noteLinks, notes]);
 
   // Brain detail view
   if (selectedBrain) {
