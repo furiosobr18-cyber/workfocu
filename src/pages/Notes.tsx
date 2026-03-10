@@ -491,7 +491,7 @@ const Notes = () => {
 
   if (!user) return null;
 
-  const connectedNotes = selectedNote ? getConnectedNotes(selectedNote.id) : [];
+  const connectedNotes = useMemo(() => selectedNote ? getConnectedNotes(selectedNote.id) : [], [selectedNote, noteLinks, notes]);
 
   // Brain detail view
   if (selectedBrain) {
