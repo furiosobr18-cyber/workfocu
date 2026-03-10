@@ -73,6 +73,8 @@ const BrainDetail = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(brain.name);
   const [showAddNotes, setShowAddNotes] = useState(false);
+  const [showCreateNote, setShowCreateNote] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
   const [viewMode, setViewMode] = useState<"content" | "graph">("content");
 
   const colorConfig = BRAIN_COLORS.find(c => c.name === brain.color) || BRAIN_COLORS[0];
@@ -275,15 +277,66 @@ const BrainDetail = ({
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Notas
                 </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddNotes(!showAddNotes)}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Adicionar Nota
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCreateNote(!showCreateNote);
+                      setShowAddNotes(false);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Criar Nota
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddNotes(!showAddNotes);
+                      setShowCreateNote(false);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar Existente
+                  </Button>
+                </div>
               </div>
+
+              {/* Create new note inline */}
+              {showCreateNote && (
+                <div className="flex gap-2 mb-3">
+                  <Input
+                    placeholder="Título da nova nota..."
+                    value={newNoteTitle}
+                    onChange={(e) => setNewNoteTitle(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newNoteTitle.trim()) {
+                        onCreateNoteInBrain(newNoteTitle.trim());
+                        setNewNoteTitle("");
+                        setShowCreateNote(false);
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!newNoteTitle.trim()}
+                    onClick={() => {
+                      if (newNoteTitle.trim()) {
+                        onCreateNoteInBrain(newNoteTitle.trim());
+                        setNewNoteTitle("");
+                        setShowCreateNote(false);
+                      }
+                    }}
+                  >
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowCreateNote(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
 
               {brainNotes.length === 0 ? (
                 <Card className="p-6 border-dashed text-center">
