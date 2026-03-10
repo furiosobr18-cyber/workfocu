@@ -598,15 +598,17 @@ const Notes = () => {
                 {/* Notes List */}
                 <Card className="h-full flex flex-col mr-3">
                 <div className="p-4 border-b border-border space-y-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar notas..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
+                  {!(selectedNote && getBrainForNote(selectedNote.id)) && (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar notas..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  )}
                   
                   {/* Esconder "Nova nota" se a nota selecionada pertence a um cérebro */}
                   {!(selectedNote && getBrainForNote(selectedNote.id)) && (
