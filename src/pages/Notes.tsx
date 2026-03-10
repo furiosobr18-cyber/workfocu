@@ -397,7 +397,11 @@ const Notes = () => {
     setIsLinking(false);
     setEditMode("edit");
     setActiveView("notes");
-    setSelectedBrain(null);
+    // Keep selectedBrain reference if the note belongs to a brain
+    const noteBrain = getBrainForNote(note.id);
+    if (!noteBrain) {
+      setSelectedBrain(null);
+    }
   };
 
   const getConnectedNotes = (noteId: string) => {
