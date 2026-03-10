@@ -158,6 +158,7 @@ const Notes = () => {
   // Brain state
   const {
     brains,
+    loading: brainsLoading,
     createBrain,
     updateBrain,
     deleteBrain,
