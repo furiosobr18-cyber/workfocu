@@ -740,7 +740,11 @@ const Notes = () => {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                  {looseNotes.length === 0 && notes.length > 0 ? (
+                  {brainsLoading ? (
+                    <p className="text-muted-foreground text-sm p-4 text-center">
+                      Carregando...
+                    </p>
+                  ) : looseNotes.length === 0 && notes.length > 0 ? (
                     <p className="text-muted-foreground text-sm p-4 text-center">
                       Todas as notas estão em cérebros.
                       <Button 
