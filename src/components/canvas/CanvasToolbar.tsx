@@ -194,6 +194,7 @@ function PagesDrawer({ editor }: { editor: Editor }) {
       </div>
     </div>
   );
+}
 
 interface CanvasToolbarProps {
   editor: Editor | null;
