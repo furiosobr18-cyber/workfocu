@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tldraw, Editor } from "tldraw";
 import "tldraw/tldraw.css";
@@ -42,7 +42,6 @@ function dataUrlToTextSnippet(dataUrl: string, maxChars = 4000): string {
   try {
     const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
     if (!match) return "";
-
     const isBase64 = Boolean(match[2]);
     const payload = match[3] || "";
     const decoded = isBase64 ? atob(payload) : decodeURIComponent(payload);
@@ -51,6 +50,47 @@ function dataUrlToTextSnippet(dataUrl: string, maxChars = 4000): string {
     return "";
   }
 }
+
+// Memoized save status indicator
+const SaveStatus = memo(({ isSaving, lastSaved, saveNow }: { isSaving: boolean; lastSaved: Date | null; saveNow: () => void }) => (
+  <>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={saveNow}
+          disabled={isSaving}
+          className="h-8 w-8 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:bg-accent"
+        >
+          <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse text-muted-foreground' : ''}`} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        <p>{isSaving ? 'Salvando...' : 'Salvar agora'}</p>
+      </TooltipContent>
+    </Tooltip>
+    <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md px-2 py-1.5">
+      {isSaving ? (
+        <>
+          <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+          <span className="text-xs text-muted-foreground">Salvando...</span>
+        </>
+      ) : lastSaved ? (
+        <>
+          <Cloud className="w-3.5 h-3.5 text-success" />
+          <span className="text-xs text-muted-foreground">Salvo</span>
+        </>
+      ) : (
+        <>
+          <CloudOff className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">-</span>
+        </>
+      )}
+    </div>
+  </>
+));
+SaveStatus.displayName = "SaveStatus";
 
 function CanvasInner() {
   const { user, loading } = useAuth();
@@ -64,30 +104,8 @@ function CanvasInner() {
     lastSaved, 
     undo, 
     redo, 
-    canUndo, 
-    canRedo,
     saveNow 
   } = useCanvasPersistence(editor);
-
-  // Throttled re-render for undo/redo state (every 300ms max)
-  const [, forceUpdate] = useState({});
-  
-  useEffect(() => {
-    if (!editor) return;
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const unsub = editor.store.listen(() => {
-      if (!timeout) {
-        timeout = setTimeout(() => {
-          timeout = null;
-          forceUpdate({});
-        }, 300);
-      }
-    });
-    return () => {
-      unsub();
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [editor]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/");
@@ -97,22 +115,63 @@ function CanvasInner() {
     setEditor(editor);
   }, []);
 
-  // Sync current tldraw page to connection context via store listener
+  // Single unified store listener for page sync + shape data (replaces 3 separate listeners)
   useEffect(() => {
     if (!editor) return;
-    const updatePage = () => setCurrentPageId(editor.getCurrentPageId());
-    updatePage();
-    const unsub = editor.store.listen(updatePage);
-    return () => unsub();
+    
+    let shapeDataTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const updateAll = () => {
+      // Sync page to connection context
+      setCurrentPageId(editor.getCurrentPageId());
+    };
+    
+    updateAll();
+    
+    const unsub = editor.store.listen(() => {
+      // Page sync is cheap, do immediately
+      setCurrentPageId(editor.getCurrentPageId());
+      
+      // Shape data update is heavier, throttle it
+      if (!shapeDataTimeout) {
+        shapeDataTimeout = setTimeout(() => {
+          shapeDataTimeout = null;
+          const shapes = editor.getCurrentPageShapes();
+          const shapeData: Record<string, any> = {};
+          for (const shape of shapes) {
+            if (shape.type === "youtube" || shape.type === "tiktok" || shape.type === "instagram") {
+              shapeData[shape.id] = { type: shape.type, url: (shape.props as any).url || "" };
+            } else if (shape.type === "canvas-image") {
+              shapeData[shape.id] = { type: "canvas-image", name: (shape.props as any).name || "imagem", src: (shape.props as any).src || "" };
+            } else if (shape.type === "canvas-file") {
+              const fileType = (shape.props as any).fileType || "";
+              const src = (shape.props as any).src || "";
+              shapeData[shape.id] = {
+                type: "canvas-file",
+                name: (shape.props as any).name || "arquivo",
+                fileType,
+                textSnippet: isTextLikeMime(fileType) && src ? dataUrlToTextSnippet(src) : "",
+              };
+            }
+          }
+          (window as any).__canvasShapeData = shapeData;
+        }, 800);
+      }
+    });
+
+    return () => {
+      unsub();
+      if (shapeDataTimeout) clearTimeout(shapeDataTimeout);
+      (window as any).__canvasShapeData = {};
+    };
   }, [editor, setCurrentPageId]);
 
-  // Drag-to-connect: mousedown on source dot → drag wire → mouseup on target dot
+  // Drag-to-connect handler
   useEffect(() => {
     let linkStartTime = 0;
 
     const handleDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
-
       const sourceId = target.getAttribute("data-connection-source");
       const sourceType = target.getAttribute("data-connection-type");
       if (sourceId && sourceType) {
@@ -120,19 +179,14 @@ function CanvasInner() {
         e.preventDefault();
         startLinking(sourceId, sourceType);
         linkStartTime = Date.now();
-        return;
       }
     };
 
     const handleUp = (e: PointerEvent) => {
       if (!linkingFrom) return;
-
       if (Date.now() - linkStartTime < 200) return;
-
       const target = e.target as HTMLElement;
-
       if (target.getAttribute("data-connection-source")) return;
-
       const targetId = target.getAttribute("data-connection-target");
       if (targetId) {
         e.stopPropagation();
@@ -146,7 +200,6 @@ function CanvasInner() {
     const handleClick = (e: MouseEvent) => {
       if (!linkingFrom) return;
       if (Date.now() - linkStartTime < 200) return;
-
       const target = e.target as HTMLElement;
       const targetId = target.getAttribute("data-connection-target");
       if (targetId) {
@@ -165,51 +218,6 @@ function CanvasInner() {
       document.removeEventListener("click", handleClick, true);
     };
   }, [startLinking, completeLinking, cancelLinking, linkingFrom]);
-
-  // Keep connected source data available to Chat via store listener (throttled)
-  useEffect(() => {
-    if (!editor) return;
-
-    const updateSourceData = () => {
-      const shapes = editor.getCurrentPageShapes();
-      const shapeData: Record<string, any> = {};
-
-      for (const shape of shapes) {
-        if (shape.type === "youtube" || shape.type === "tiktok" || shape.type === "instagram") {
-          shapeData[shape.id] = { type: shape.type, url: (shape.props as any).url || "" };
-        } else if (shape.type === "canvas-image") {
-          shapeData[shape.id] = { type: "canvas-image", name: (shape.props as any).name || "imagem", src: (shape.props as any).src || "" };
-        } else if (shape.type === "canvas-file") {
-          const fileType = (shape.props as any).fileType || "";
-          const src = (shape.props as any).src || "";
-          shapeData[shape.id] = {
-            type: "canvas-file",
-            name: (shape.props as any).name || "arquivo",
-            fileType,
-            textSnippet: isTextLikeMime(fileType) && src ? dataUrlToTextSnippet(src) : "",
-          };
-        }
-      }
-      (window as any).__canvasShapeData = shapeData;
-    };
-
-    updateSourceData();
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const unsub = editor.store.listen(() => {
-      if (!timeout) {
-        timeout = setTimeout(() => {
-          timeout = null;
-          updateSourceData();
-        }, 500);
-      }
-    });
-
-    return () => {
-      unsub();
-      if (timeout) clearTimeout(timeout);
-      (window as any).__canvasShapeData = {};
-    };
-  }, [editor]);
 
   if (loading) {
     return (
@@ -240,7 +248,6 @@ function CanvasInner() {
               {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
             </Button>
             
-            {/* Undo/Redo buttons */}
             <div className="flex items-center gap-0.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md p-0.5">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -277,44 +284,9 @@ function CanvasInner() {
               </Tooltip>
             </div>
 
-            {/* Save button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={saveNow}
-                  disabled={isSaving}
-                  className="h-8 w-8 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:bg-accent"
-                >
-                  <Save className={`w-4 h-4 ${isSaving ? 'animate-pulse text-muted-foreground' : ''}`} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>{isSaving ? 'Salvando...' : 'Salvar agora'}</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Save status */}
-            <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm shadow-sm border border-border rounded-md px-2 py-1.5">
-              {isSaving ? (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Salvando...</span>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <Cloud className="w-3.5 h-3.5 text-success" />
-                  <span className="text-xs text-muted-foreground">Salvo</span>
-                </>
-              ) : (
-                <>
-                  <CloudOff className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">-</span>
-                </>
-              )}
-            </div>
+            <SaveStatus isSaving={isSaving} lastSaved={lastSaved} saveNow={saveNow} />
           </div>
+
           {linkingFrom && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[600] bg-muted/90 text-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-fade-in border border-border">
               <span className="animate-pulse">🔗</span>
