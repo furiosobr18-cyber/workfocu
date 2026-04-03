@@ -68,6 +68,7 @@ const SidebarNav = memo(() => {
             <li key={item.path}>
               <Link
                 to={item.path}
+                onMouseEnter={() => preloadMap[item.path]?.()}
                 className={cn(
                   "sidebar-link",
                   location.pathname === item.path && "sidebar-link-active"
