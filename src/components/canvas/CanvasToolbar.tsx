@@ -275,7 +275,8 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
       {/* Separator */}
       <div className="w-px h-5 bg-border mx-1" />
 
-      {/* Layer ordering */}
+      {/* Pages & Layer ordering */}
+      <PagesDrawer editor={editor} />
       <LayerDrawer editor={editor} />
       <button
         onClick={() => editor.updateInstanceState({ isGridMode: !editor.getInstanceState().isGridMode })}
