@@ -84,7 +84,7 @@ export function useCanvasPersistence(editor: Editor | null) {
             const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
             if (isValidSnapshot(snapshot)) {
               try {
-                editor.store.loadSnapshot(snapshot);
+                safeLoadSnapshot(editor, snapshot);
                 saveToLocalCache(snapshot);
               } catch {}
             }
