@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram, Type, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Layers } from "lucide-react";
-import { Editor } from "tldraw";
+import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram, Type, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Layers, Files, Plus, Trash2 } from "lucide-react";
+import { Editor, TLPageId, createShapeId } from "tldraw";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -111,6 +111,91 @@ function LayerDrawer({ editor }: { editor: Editor }) {
   );
 }
 
+function PagesDrawer({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [pages, setPages] = useState(editor.getPages());
+  const [currentPageId, setCurrentPageId] = useState(editor.getCurrentPageId());
+
+  useEffect(() => {
+    const update = () => {
+      setPages(editor.getPages());
+      setCurrentPageId(editor.getCurrentPageId());
+    };
+    const unsub = editor.store.listen(update);
+    return () => unsub();
+  }, [editor]);
+
+  const handleEnter = () => {
+    clearTimeout(timeoutRef.current);
+    setOpen(true);
+  };
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 300);
+  };
+
+  const addPage = () => {
+    const id = `page:${Date.now()}` as TLPageId;
+    editor.createPage({ name: `Página ${pages.length + 1}`, id });
+    editor.setCurrentPage(id);
+  };
+
+  const deletePage = (pageId: TLPageId) => {
+    if (pages.length <= 1) return;
+    editor.deletePage(pageId);
+  };
+
+  return (
+    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        title="Páginas"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Files className="w-4 h-4" />
+      </button>
+      <div
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1.5 shadow-xl transition-all duration-200 origin-bottom min-w-[140px]"
+        style={{
+          opacity: open ? 1 : 0,
+          transform: `translateX(-50%) scaleY(${open ? 1 : 0})`,
+          pointerEvents: open ? "auto" : "none",
+        }}
+      >
+        {pages.map((page) => (
+          <div key={page.id} className="flex items-center w-full gap-1">
+            <button
+              onClick={() => editor.setCurrentPage(page.id)}
+              className={`flex-1 px-2 py-1.5 rounded text-xs text-left truncate transition-colors ${
+                currentPageId === page.id
+                  ? "bg-accent text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              }`}
+            >
+              {page.name}
+            </button>
+            {pages.length > 1 && (
+              <button
+                onClick={() => deletePage(page.id)}
+                title="Excluir página"
+                className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addPage}
+          className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors mt-0.5 border-t border-border pt-1.5"
+        >
+          <Plus className="w-3 h-3" />
+          Nova página
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface CanvasToolbarProps {
   editor: Editor | null;
 }
@@ -190,7 +275,8 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
       {/* Separator */}
       <div className="w-px h-5 bg-border mx-1" />
 
-      {/* Layer ordering */}
+      {/* Pages & Layer ordering */}
+      <PagesDrawer editor={editor} />
       <LayerDrawer editor={editor} />
       <button
         onClick={() => editor.updateInstanceState({ isGridMode: !editor.getInstanceState().isGridMode })}
