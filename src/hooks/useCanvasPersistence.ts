@@ -1,44 +1,64 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Editor, TLRecord, StoreSnapshot, loadSnapshot } from "tldraw";
+import { Editor, getSnapshot, loadSnapshot } from "tldraw";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-const CACHE_KEY = "canvas_local_cache";
-const CACHE_TS_KEY = "canvas_local_cache_ts";
+const DOC_CACHE_KEY = "canvas_doc_cache";
+const SESSION_CACHE_KEY = "canvas_session_cache";
+const CACHE_TS_KEY = "canvas_cache_ts";
 const CLOUD_SAVE_DELAY = 2000;
 const LOCAL_SAVE_THROTTLE = 400;
 
-function saveToLocalCache(snapshot: any) {
+function saveToLocalCache(document: any, session: any) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(DOC_CACHE_KEY, JSON.stringify(document));
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(session));
     localStorage.setItem(CACHE_TS_KEY, new Date().toISOString());
   } catch {}
 }
 
-function loadFromLocalCache(): { snapshot: any; ts: string | null } {
+function loadFromLocalCache(): { document: any; session: any; ts: string | null } {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const docRaw = localStorage.getItem(DOC_CACHE_KEY);
+    const sessionRaw = localStorage.getItem(SESSION_CACHE_KEY);
     const ts = localStorage.getItem(CACHE_TS_KEY);
-    if (raw) return { snapshot: JSON.parse(raw), ts };
+    if (docRaw) {
+      return {
+        document: JSON.parse(docRaw),
+        session: sessionRaw ? JSON.parse(sessionRaw) : undefined,
+        ts,
+      };
+    }
   } catch {}
-  return { snapshot: null, ts: null };
+  return { document: null, session: null, ts: null };
 }
 
-function isValidSnapshot(s: any): boolean {
-  return s && typeof s === "object" && "store" in s && "schema" in s;
+function isValidDocument(d: any): boolean {
+  return d && typeof d === "object" && "store" in d && "schema" in d;
 }
 
-function safeLoadSnapshot(editor: Editor, snapshot: any) {
+function safeLoad(editor: Editor, document: any, session?: any) {
   try {
-    loadSnapshot(editor.store, snapshot);
+    const payload: any = { document };
+    if (session) payload.session = session;
+    loadSnapshot(editor.store, payload);
   } catch (e) {
-    console.warn("Failed to load snapshot, clearing cache", e);
+    console.warn("Failed to load snapshot, trying without session", e);
     try {
-      localStorage.removeItem(CACHE_KEY);
-      localStorage.removeItem(CACHE_TS_KEY);
-    } catch {}
+      loadSnapshot(editor.store, { document });
+    } catch (e2) {
+      console.warn("Failed to load document snapshot, clearing cache", e2);
+      try {
+        localStorage.removeItem(DOC_CACHE_KEY);
+        localStorage.removeItem(SESSION_CACHE_KEY);
+        localStorage.removeItem(CACHE_TS_KEY);
+      } catch {}
+    }
   }
 }
+
+// Clean up old cache format on module load
+try { localStorage.removeItem("canvas_local_cache"); localStorage.removeItem("canvas_local_cache_ts"); } catch {}
 
 export function useCanvasPersistence(editor: Editor | null) {
   const { user } = useAuth();
@@ -50,17 +70,17 @@ export function useCanvasPersistence(editor: Editor | null) {
   const isLoadingRef = useRef(false);
   const localCacheLoadedRef = useRef(false);
 
-  // 1) Load from local cache IMMEDIATELY — zero delay
+  // 1) Load from local cache IMMEDIATELY
   useEffect(() => {
     if (!editor || localCacheLoadedRef.current) return;
-    const { snapshot } = loadFromLocalCache();
-    if (isValidSnapshot(snapshot)) {
-      safeLoadSnapshot(editor, snapshot);
+    const { document, session } = loadFromLocalCache();
+    if (isValidDocument(document)) {
+      safeLoad(editor, document, session);
       localCacheLoadedRef.current = true;
     }
   }, [editor]);
 
-  // 2) Background cloud sync — only overwrite if cloud is newer
+  // 2) Background cloud sync
   useEffect(() => {
     if (!user || !editor) return;
 
@@ -81,18 +101,16 @@ export function useCanvasPersistence(editor: Editor | null) {
           const cloudNewer = !localTs || new Date(existing.updated_at) > new Date(localTs);
 
           if (cloudNewer && existing.content) {
-            const snapshot = existing.content as unknown as StoreSnapshot<TLRecord>;
-            if (isValidSnapshot(snapshot)) {
-              try {
-                safeLoadSnapshot(editor, snapshot);
-                saveToLocalCache(snapshot);
-              } catch {}
+            const cloudDoc = existing.content as any;
+            if (isValidDocument(cloudDoc)) {
+              safeLoad(editor, cloudDoc);
+              saveToLocalCache(cloudDoc, undefined);
             }
           }
         } else {
           // Create new document
-          const snapshot = editor.store.getSnapshot();
-          const serialized = JSON.parse(JSON.stringify(snapshot));
+          const { document } = getSnapshot(editor.store);
+          const serialized = JSON.parse(JSON.stringify(document));
           const { data: newDoc, error: createError } = await supabase
             .from("canvas_documents")
             .insert([{ user_id: user.id, name: "Meu Canvas", content: serialized }])
@@ -116,13 +134,14 @@ export function useCanvasPersistence(editor: Editor | null) {
 
     setIsSaving(true);
     try {
-      const snapshot = editor.store.getSnapshot();
-      const serialized = JSON.parse(JSON.stringify(snapshot));
-      saveToLocalCache(serialized);
+      const { document, session } = getSnapshot(editor.store);
+      const docSerialized = JSON.parse(JSON.stringify(document));
+      const sessionSerialized = JSON.parse(JSON.stringify(session));
+      saveToLocalCache(docSerialized, sessionSerialized);
 
       const { error } = await supabase
         .from("canvas_documents")
-        .update({ content: serialized })
+        .update({ content: docSerialized })
         .eq("id", documentId)
         .eq("user_id", user.id);
 
@@ -145,8 +164,11 @@ export function useCanvasPersistence(editor: Editor | null) {
         localSaveTimeoutRef.current = setTimeout(() => {
           localSaveTimeoutRef.current = null;
           try {
-            const snapshot = editor.store.getSnapshot();
-            saveToLocalCache(JSON.parse(JSON.stringify(snapshot)));
+            const { document, session } = getSnapshot(editor.store);
+            saveToLocalCache(
+              JSON.parse(JSON.stringify(document)),
+              JSON.parse(JSON.stringify(session))
+            );
           } catch {}
         }, LOCAL_SAVE_THROTTLE);
       }
