@@ -57,6 +57,9 @@ function safeLoad(editor: Editor, document: any, session?: any) {
   }
 }
 
+// Clean up old cache format on module load
+try { localStorage.removeItem("canvas_local_cache"); localStorage.removeItem("canvas_local_cache_ts"); } catch {}
+
 export function useCanvasPersistence(editor: Editor | null) {
   const { user } = useAuth();
   const [documentId, setDocumentId] = useState<string | null>(null);
