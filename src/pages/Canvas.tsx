@@ -328,7 +328,7 @@ function CanvasInner() {
             </div>
           )}
 
-          <div className="absolute inset-0 [&_.tlui-toolbar]:hidden [&_.tlui-style-panel]:hidden [&_.tlui-zoom-menu]:hidden [&_.tlui-navigation-zone]:hidden">
+          <div className="absolute inset-0 [&_.tlui-toolbar]:hidden [&_.tlui-style-panel]:hidden [&_.tlui-zoom-menu]:hidden [&_.tlui-navigation-zone]:hidden [&_.tlui-page-menu]:hidden [&_.tlui-menu-zone]:hidden">
             <Tldraw
               shapeUtils={customShapeUtils}
               tools={customTools}
