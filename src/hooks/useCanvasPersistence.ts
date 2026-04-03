@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Editor, TLRecord, StoreSnapshot } from "tldraw";
+import { Editor, TLRecord, StoreSnapshot, loadSnapshot } from "tldraw";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
@@ -28,6 +28,18 @@ function isValidSnapshot(s: any): boolean {
   return s && typeof s === "object" && "store" in s && "schema" in s;
 }
 
+function safeLoadSnapshot(editor: Editor, snapshot: any) {
+  try {
+    loadSnapshot(editor.store, snapshot);
+  } catch (e) {
+    console.warn("Failed to load snapshot, clearing cache", e);
+    try {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(CACHE_TS_KEY);
+    } catch {}
+  }
+}
+
 export function useCanvasPersistence(editor: Editor | null) {
   const { user } = useAuth();
   const [documentId, setDocumentId] = useState<string | null>(null);
@@ -43,10 +55,8 @@ export function useCanvasPersistence(editor: Editor | null) {
     if (!editor || localCacheLoadedRef.current) return;
     const { snapshot } = loadFromLocalCache();
     if (isValidSnapshot(snapshot)) {
-      try {
-        editor.store.loadSnapshot(snapshot);
-        localCacheLoadedRef.current = true;
-      } catch {}
+      safeLoadSnapshot(editor, snapshot);
+      localCacheLoadedRef.current = true;
     }
   }, [editor]);
 
