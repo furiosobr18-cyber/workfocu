@@ -7,6 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
+// Preload map for heavy pages
+const preloadMap: Record<string, () => void> = {
+  "/canvas": () => import("@/pages/Canvas"),
+  "/notes": () => import("@/pages/Notes"),
+  "/dashboard": () => import("@/pages/Dashboard"),
+};
+
 const navItems = [
   { icon: LayoutGrid, label: "Painel", path: "/dashboard" },
   { icon: CheckSquare, label: "Tarefas", path: "/tasks" },
