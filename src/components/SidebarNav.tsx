@@ -22,6 +22,7 @@ const navItems = [
   { icon: Calendar, label: "Calendário", path: "/calendar" },
   { icon: PenTool, label: "Canvas", path: "/canvas" },
   { icon: Flame, label: "DG", path: "/dg" },
+  { icon: Settings, label: "Configurações", path: "/settings" },
 ];
 
 const SidebarNav = memo(() => {
