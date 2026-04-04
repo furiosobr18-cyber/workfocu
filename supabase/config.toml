@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.canvas-chat]
 verify_jwt = false
+
+[functions.canvas-api]
+verify_jwt = false
