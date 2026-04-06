@@ -116,6 +116,8 @@ function PagesDrawer({ editor }: { editor: Editor }) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [pages, setPages] = useState(editor.getPages());
   const [currentPageId, setCurrentPageId] = useState(editor.getCurrentPageId());
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     const update = () => {
@@ -145,6 +147,18 @@ function PagesDrawer({ editor }: { editor: Editor }) {
     editor.deletePage(pageId);
   };
 
+  const startRename = (pageId: string, name: string) => {
+    setEditingPageId(pageId);
+    setEditName(name);
+  };
+
+  const commitRename = () => {
+    if (editingPageId && editName.trim()) {
+      editor.renamePage(editingPageId as TLPageId, editName.trim());
+    }
+    setEditingPageId(null);
+  };
+
   return (
     <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
@@ -154,7 +168,7 @@ function PagesDrawer({ editor }: { editor: Editor }) {
         <Files className="w-4 h-4" />
       </button>
       <div
-        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1.5 shadow-xl transition-all duration-200 origin-bottom min-w-[140px]"
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1.5 shadow-xl transition-all duration-200 origin-bottom min-w-[160px]"
         style={{
           opacity: open ? 1 : 0,
           transform: `translateX(-50%) scaleY(${open ? 1 : 0})`,
@@ -163,16 +177,31 @@ function PagesDrawer({ editor }: { editor: Editor }) {
       >
         {pages.map((page) => (
           <div key={page.id} className="flex items-center w-full gap-1">
-            <button
-              onClick={() => editor.setCurrentPage(page.id)}
-              className={`flex-1 px-2 py-1.5 rounded text-xs text-left truncate transition-colors ${
-                currentPageId === page.id
-                  ? "bg-accent text-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              }`}
-            >
-              {page.name}
-            </button>
+            {editingPageId === page.id ? (
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename();
+                  if (e.key === "Escape") setEditingPageId(null);
+                }}
+                autoFocus
+                className="flex-1 px-2 py-1 rounded text-xs bg-background border border-border text-foreground outline-none"
+              />
+            ) : (
+              <button
+                onClick={() => editor.setCurrentPage(page.id)}
+                onDoubleClick={() => startRename(page.id, page.name)}
+                className={`flex-1 px-2 py-1.5 rounded text-xs text-left truncate transition-colors ${
+                  currentPageId === page.id
+                    ? "bg-accent text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }`}
+              >
+                {page.name}
+              </button>
+            )}
             {pages.length > 1 && (
               <button
                 onClick={() => deletePage(page.id)}
