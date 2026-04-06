@@ -296,18 +296,37 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-0 bg-card border border-border rounded-xl px-1.5 py-1.5 shadow-xl">
       {/* Tool buttons */}
       {toolButtons.map(({ id, icon: Icon, title }) => (
-        <button
-          key={id}
-          onClick={() => selectTool(id)}
-          title={title}
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === id
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-          }`}
+        <div key={id} className="relative"
+          onMouseEnter={() => { if (id === "draw") { clearTimeout(colorPickerRef.current); setShowColorPicker(true); } }}
+          onMouseLeave={() => { if (id === "draw") { colorPickerRef.current = setTimeout(() => setShowColorPicker(false), 200); } }}
         >
-          <Icon className="w-4 h-4" />
-        </button>
+          <button
+            onClick={() => selectTool(id)}
+            title={title}
+            className={`p-2 rounded-lg transition-colors ${
+              activeTool === id
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+          {id === "draw" && showColorPicker && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-wrap gap-1 bg-card border border-border rounded-lg p-1.5 shadow-xl w-[120px] justify-center">
+              {drawColors.map(({ id: cid, color, label }) => (
+                <button
+                  key={cid}
+                  onClick={() => { setDrawColor(cid); selectTool("draw"); }}
+                  title={label}
+                  className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-125 ${
+                    currentColor === cid ? "border-foreground scale-110" : "border-transparent"
+                  }`}
+                  style={{ background: color }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ))}
 
       {/* Separator */}
