@@ -263,6 +263,28 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     });
   };
 
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const drawColors = [
+    { id: "black", color: "#1d1d1d", label: "Preto" },
+    { id: "grey", color: "#9ba2a8", label: "Cinza" },
+    { id: "red", color: "#e03131", label: "Vermelho" },
+    { id: "orange", color: "#f76707", label: "Laranja" },
+    { id: "yellow", color: "#ffc034", label: "Amarelo" },
+    { id: "green", color: "#099268", label: "Verde" },
+    { id: "blue", color: "#1c7ed6", label: "Azul" },
+    { id: "violet", color: "#7048e8", label: "Violeta" },
+    { id: "white", color: "#ffffff", label: "Branco" },
+  ];
+
+  const currentColor = (editor.getStyleForNextShape as any)?.call(editor, { id: "color", type: "enum" })?.value ?? "black";
+
+  const setDrawColor = (colorId: string) => {
+    editor.setStyleForNextShapes({ id: "color", type: "enum" } as any, colorId as any);
+    editor.setStyleForSelectedShapes({ id: "color", type: "enum" } as any, colorId as any);
+  };
+
   const toolButtons = [
     { id: "select", icon: MousePointer2, title: "Selecionar" },
     { id: "hand", icon: Hand, title: "Mover" },
