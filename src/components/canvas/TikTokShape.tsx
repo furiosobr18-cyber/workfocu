@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { ShapeOverlay } from "./ShapeOverlay";
 import {
   BaseBoxShapeUtil,
   HTMLContainer,
