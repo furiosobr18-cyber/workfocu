@@ -8,6 +8,7 @@ import {
   RecordProps,
 } from "tldraw";
 import { SourceDot } from "./YouTubeShape";
+import { ShapeOverlay } from "./ShapeOverlay";
 import { useState } from "react";
 
 const FIT_MODES = ["cover", "contain", "fill", "none"] as const;
