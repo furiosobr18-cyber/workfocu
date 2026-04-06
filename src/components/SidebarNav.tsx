@@ -1,6 +1,6 @@
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Flame, Settings, Sun, Moon, LogOut } from "lucide-react";
+import { LayoutGrid, CheckSquare, Timer, FileText, Calendar, PenTool, Flame, Sun, Moon, LogOut } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
