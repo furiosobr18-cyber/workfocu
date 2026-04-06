@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Editor } from "tldraw";
-import { Lock, Unlock, MoreVertical } from "lucide-react";
+import { Lock, Unlock } from "lucide-react";
 
 interface ShapeContextMenuProps {
   editor: Editor | null;
@@ -22,14 +22,20 @@ export default function ShapeContextMenu({ editor }: ShapeContextMenuProps) {
         return;
       }
 
-      setSelectedIds([...ids]);
-
-      // Check if all selected are locked
       const shapes = ids.map(id => editor.getShape(id)).filter(Boolean);
       const allLocked = shapes.length > 0 && shapes.every(s => s!.isLocked);
-      setIsLocked(allLocked);
 
-      // Position the menu button at top-right of selection bounds
+      // Hide menu if all selected shapes are locked
+      if (allLocked) {
+        setMenuPos(null);
+        setIsLocked(true);
+        setSelectedIds([...ids]);
+        return;
+      }
+
+      setSelectedIds([...ids]);
+      setIsLocked(false);
+
       const bounds = editor.getSelectionRotatedPageBounds();
       if (bounds) {
         const screenPoint = editor.pageToScreen({ x: bounds.maxX, y: bounds.minY });
@@ -62,20 +68,11 @@ export default function ShapeContextMenu({ editor }: ShapeContextMenuProps) {
     >
       <button
         onClick={toggleLock}
-        title={isLocked ? "Desbloquear" : "Fixar elemento"}
+        title="Fixar elemento"
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border shadow-lg text-xs text-foreground hover:bg-accent transition-colors"
       >
-        {isLocked ? (
-          <>
-            <Lock className="w-3.5 h-3.5 text-primary" />
-            <span>Fixado</span>
-          </>
-        ) : (
-          <>
-            <Unlock className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Fixar</span>
-          </>
-        )}
+        <Unlock className="w-3.5 h-3.5 text-muted-foreground" />
+        <span>Fixar</span>
       </button>
     </div>
   );

@@ -20,9 +20,20 @@ export type InstagramShape = TLBaseShape<
   }
 >;
 
-function getInstagramPostId(url: string): string | null {
-  const match = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
-  return match ? match[1] : null;
+type InstagramUrlType = "post" | "profile" | null;
+
+function parseInstagramUrl(url: string): { type: InstagramUrlType; id: string | null; username: string | null } {
+  // Post or reel
+  const postMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+  if (postMatch) return { type: "post", id: postMatch[1], username: null };
+
+  // Profile URL: instagram.com/username (no /p/ /reel/ etc)
+  const profileMatch = url.match(/instagram\.com\/([A-Za-z0-9_.]+)\/?(?:\?.*)?$/);
+  if (profileMatch && !["p", "reel", "reels", "explore", "stories", "accounts", "directory"].includes(profileMatch[1])) {
+    return { type: "profile", id: null, username: profileMatch[1] };
+  }
+
+  return { type: null, id: null, username: null };
 }
 
 export class InstagramShapeUtil extends BaseBoxShapeUtil<InstagramShape> {
@@ -58,14 +69,14 @@ function InstagramComponent({ shape }: { shape: InstagramShape }) {
   const editor = useEditor();
   const [showUrlInput, setShowUrlInput] = useState(!shape.props.url);
   const [urlValue, setUrlValue] = useState(shape.props.url || "");
-  const postId = getInstagramPostId(shape.props.url);
+  const parsed = parseInstagramUrl(shape.props.url);
 
   const handleSubmit = useCallback(() => {
     editor.updateShape({ id: shape.id, type: "instagram", props: { url: urlValue.trim() } });
     if (urlValue.trim()) setShowUrlInput(false);
   }, [editor, shape.id, urlValue]);
 
-  if (!postId || showUrlInput) {
+  if ((!parsed.type) || showUrlInput) {
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
@@ -86,7 +97,7 @@ function InstagramComponent({ shape }: { shape: InstagramShape }) {
           onPointerDown={(e) => e.stopPropagation()}
         >
           <span style={{ fontSize: 12, color: "hsl(0,0%,60%)", fontWeight: 500 }}>
-            Cole a URL do Instagram
+            Cole a URL do Instagram (post, reel ou perfil)
           </span>
           <input
             value={urlValue}
@@ -96,7 +107,7 @@ function InstagramComponent({ shape }: { shape: InstagramShape }) {
               if (e.key === "Enter") handleSubmit();
               if (e.key === "Escape") { setShowUrlInput(false); setUrlValue(shape.props.url || ""); }
             }}
-            placeholder="https://instagram.com/p/... ou /reel/..."
+            placeholder="https://instagram.com/usuario ou /p/..."
             autoFocus
             style={{
               width: "100%", background: "hsl(0,0%,12%)", border: "1px solid hsl(0,0%,25%)",
@@ -133,6 +144,14 @@ function InstagramComponent({ shape }: { shape: InstagramShape }) {
     );
   }
 
+  // Build embed URL based on type
+  let embedSrc = "";
+  if (parsed.type === "post" && parsed.id) {
+    embedSrc = `https://www.instagram.com/p/${parsed.id}/embed`;
+  } else if (parsed.type === "profile" && parsed.username) {
+    embedSrc = `https://www.instagram.com/${parsed.username}/embed`;
+  }
+
   return (
     <HTMLContainer style={{
       width: shape.props.w, height: shape.props.h,
@@ -140,7 +159,7 @@ function InstagramComponent({ shape }: { shape: InstagramShape }) {
     }}>
       <div style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative" }}>
         <iframe
-          src={`https://www.instagram.com/p/${postId}/embed`}
+          src={embedSrc}
           width="100%" height="100%"
           style={{ border: "none" }}
           allowFullScreen

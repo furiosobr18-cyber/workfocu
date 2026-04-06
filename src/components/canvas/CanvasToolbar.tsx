@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Youtube, Image, FileUp, MessageSquare, MousePointer2, Hand, Pen, Sun, Moon, Grid3X3, Frame, Video, Music2, Instagram, Type, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Layers, Files, Plus, Trash2 } from "lucide-react";
-import { Editor, TLPageId } from "tldraw";
+import { Editor, TLPageId, DefaultColorStyle } from "tldraw";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -116,6 +116,8 @@ function PagesDrawer({ editor }: { editor: Editor }) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [pages, setPages] = useState(editor.getPages());
   const [currentPageId, setCurrentPageId] = useState(editor.getCurrentPageId());
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     const update = () => {
@@ -145,6 +147,18 @@ function PagesDrawer({ editor }: { editor: Editor }) {
     editor.deletePage(pageId);
   };
 
+  const startRename = (pageId: string, name: string) => {
+    setEditingPageId(pageId);
+    setEditName(name);
+  };
+
+  const commitRename = () => {
+    if (editingPageId && editName.trim()) {
+      editor.renamePage(editingPageId as TLPageId, editName.trim());
+    }
+    setEditingPageId(null);
+  };
+
   return (
     <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
@@ -154,7 +168,7 @@ function PagesDrawer({ editor }: { editor: Editor }) {
         <Files className="w-4 h-4" />
       </button>
       <div
-        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1.5 shadow-xl transition-all duration-200 origin-bottom min-w-[140px]"
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-col items-center gap-0.5 bg-card border border-border rounded-lg p-1.5 shadow-xl transition-all duration-200 origin-bottom min-w-[160px]"
         style={{
           opacity: open ? 1 : 0,
           transform: `translateX(-50%) scaleY(${open ? 1 : 0})`,
@@ -163,16 +177,31 @@ function PagesDrawer({ editor }: { editor: Editor }) {
       >
         {pages.map((page) => (
           <div key={page.id} className="flex items-center w-full gap-1">
-            <button
-              onClick={() => editor.setCurrentPage(page.id)}
-              className={`flex-1 px-2 py-1.5 rounded text-xs text-left truncate transition-colors ${
-                currentPageId === page.id
-                  ? "bg-accent text-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              }`}
-            >
-              {page.name}
-            </button>
+            {editingPageId === page.id ? (
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename();
+                  if (e.key === "Escape") setEditingPageId(null);
+                }}
+                autoFocus
+                className="flex-1 px-2 py-1 rounded text-xs bg-background border border-border text-foreground outline-none"
+              />
+            ) : (
+              <button
+                onClick={() => editor.setCurrentPage(page.id)}
+                onDoubleClick={() => startRename(page.id, page.name)}
+                className={`flex-1 px-2 py-1.5 rounded text-xs text-left truncate transition-colors ${
+                  currentPageId === page.id
+                    ? "bg-accent text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }`}
+              >
+                {page.name}
+              </button>
+            )}
             {pages.length > 1 && (
               <button
                 onClick={() => deletePage(page.id)}
@@ -204,6 +233,8 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   const { theme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<string>("select");
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!editor) return;
@@ -217,8 +248,6 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     const unsubscribe = editor.store.listen(updateState);
     return () => unsubscribe();
   }, [editor]);
-
-  if (!editor) return null;
 
   const selectTool = (tool: string) => {
     editor.setCurrentTool(tool);
@@ -234,6 +263,27 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     });
   };
 
+  if (!editor) return null;
+
+  const drawColors = [
+    { id: "black", color: "#1d1d1d", label: "Preto" },
+    { id: "grey", color: "#9ba2a8", label: "Cinza" },
+    { id: "red", color: "#e03131", label: "Vermelho" },
+    { id: "orange", color: "#f76707", label: "Laranja" },
+    { id: "yellow", color: "#ffc034", label: "Amarelo" },
+    { id: "green", color: "#099268", label: "Verde" },
+    { id: "blue", color: "#1c7ed6", label: "Azul" },
+    { id: "violet", color: "#7048e8", label: "Violeta" },
+    { id: "white", color: "#ffffff", label: "Branco" },
+  ];
+
+  const currentColor = editor.getStyleForNextShape(DefaultColorStyle) ?? "black";
+
+  const setDrawColor = (colorId: string) => {
+    editor.setStyleForNextShapes(DefaultColorStyle, colorId as any);
+    editor.setStyleForSelectedShapes(DefaultColorStyle, colorId as any);
+  };
+
   const toolButtons = [
     { id: "select", icon: MousePointer2, title: "Selecionar" },
     { id: "hand", icon: Hand, title: "Mover" },
@@ -246,18 +296,37 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-0 bg-card border border-border rounded-xl px-1.5 py-1.5 shadow-xl">
       {/* Tool buttons */}
       {toolButtons.map(({ id, icon: Icon, title }) => (
-        <button
-          key={id}
-          onClick={() => selectTool(id)}
-          title={title}
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === id
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-          }`}
+        <div key={id} className="relative"
+          onMouseEnter={() => { if (id === "draw") { clearTimeout(colorPickerRef.current); setShowColorPicker(true); } }}
+          onMouseLeave={() => { if (id === "draw") { colorPickerRef.current = setTimeout(() => setShowColorPicker(false), 200); } }}
         >
-          <Icon className="w-4 h-4" />
-        </button>
+          <button
+            onClick={() => selectTool(id)}
+            title={title}
+            className={`p-2 rounded-lg transition-colors ${
+              activeTool === id
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+          {id === "draw" && showColorPicker && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex flex-wrap gap-1 bg-card border border-border rounded-lg p-1.5 shadow-xl w-[120px] justify-center">
+              {drawColors.map(({ id: cid, color, label }) => (
+                <button
+                  key={cid}
+                  onClick={() => { setDrawColor(cid); selectTool("draw"); }}
+                  title={label}
+                  className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-125 ${
+                    currentColor === cid ? "border-foreground scale-110" : "border-transparent"
+                  }`}
+                  style={{ background: color }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ))}
 
       {/* Separator */}
