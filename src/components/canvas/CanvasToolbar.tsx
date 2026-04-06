@@ -233,6 +233,8 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   const { theme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<string>("select");
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!editor) return;
@@ -248,23 +250,6 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
   }, [editor]);
 
   if (!editor) return null;
-
-  const selectTool = (tool: string) => {
-    editor.setCurrentTool(tool);
-  };
-
-  const addShape = (type: string) => {
-    const { x, y } = editor.getViewportScreenCenter();
-    const point = editor.screenToPage({ x, y });
-    editor.createShape({
-      type,
-      x: point.x - 150,
-      y: point.y - 100,
-    });
-  };
-
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const colorPickerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const drawColors = [
     { id: "black", color: "#1d1d1d", label: "Preto" },
