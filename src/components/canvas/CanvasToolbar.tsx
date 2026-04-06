@@ -277,11 +277,11 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     { id: "white", color: "#ffffff", label: "Branco" },
   ];
 
-  const currentColor = (editor.getStyleForNextShape as any)?.call(editor, { id: "color", type: "enum" })?.value ?? "black";
+  const currentColor = editor.getStyleForNextShape(DefaultColorStyle) ?? "black";
 
   const setDrawColor = (colorId: string) => {
-    editor.setStyleForNextShapes({ id: "color", type: "enum" } as any, colorId as any);
-    editor.setStyleForSelectedShapes({ id: "color", type: "enum" } as any, colorId as any);
+    editor.setStyleForNextShapes(DefaultColorStyle, colorId as any);
+    editor.setStyleForSelectedShapes(DefaultColorStyle, colorId as any);
   };
 
   const toolButtons = [
