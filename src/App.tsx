@@ -17,7 +17,7 @@ const Notes = lazy(() => import("./pages/Notes"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const Canvas = lazy(() => import("./pages/Canvas"));
 const DG = lazy(() => import("./pages/DG"));
-const Settings = lazy(() => import("./pages/Settings"));
+
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
