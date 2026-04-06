@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { ShapeOverlay } from "./ShapeOverlay";
 import {
   BaseBoxShapeUtil,
   HTMLContainer,
@@ -145,11 +146,12 @@ function TikTokComponent({ shape }: { shape: TikTokShape }) {
           style={{ border: "none" }}
           allowFullScreen
         />
+        <ShapeOverlay shapeId={shape.id} />
         <button
           onClick={(e) => { e.stopPropagation(); setShowUrlInput(true); setUrlValue(shape.props.url); }}
           onPointerDown={(e) => e.stopPropagation()}
           style={{
-            position: "absolute", top: 8, right: 8,
+            position: "absolute", top: 8, right: 8, zIndex: 10,
             background: "hsla(0,0%,7%,0.85)", border: "1px solid hsl(0,0%,25%)",
             borderRadius: 6, padding: "4px 8px", color: "hsl(0,0%,70%)",
             fontSize: 11, cursor: "pointer", backdropFilter: "blur(4px)",
