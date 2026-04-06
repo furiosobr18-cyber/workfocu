@@ -249,6 +249,20 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
     return () => unsubscribe();
   }, [editor]);
 
+  const selectTool = (tool: string) => {
+    editor.setCurrentTool(tool);
+  };
+
+  const addShape = (type: string) => {
+    const { x, y } = editor.getViewportScreenCenter();
+    const point = editor.screenToPage({ x, y });
+    editor.createShape({
+      type,
+      x: point.x - 150,
+      y: point.y - 100,
+    });
+  };
+
   if (!editor) return null;
 
   const drawColors = [
