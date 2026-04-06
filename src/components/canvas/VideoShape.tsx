@@ -76,7 +76,7 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
         borderRadius: br, overflow: "visible", pointerEvents: "all", position: "relative",
         opacity: shape.props.opacity,
       }}>
-        <div style={{ width: "100%", height: "100%", borderRadius: br, overflow: "hidden", background: "#000" }}>
+        <div style={{ width: "100%", height: "100%", borderRadius: br, overflow: "hidden", background: "#000", position: "relative" }}>
           <video
             src={shape.props.src}
             controls
@@ -86,6 +86,7 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape> {
             }}
             draggable={false}
           />
+          <ShapeOverlay shapeId={shape.id} />
         </div>
         <FitControls shape={shape} />
         <SourceDot shapeId={shape.id} shapeType="canvas-video" />
