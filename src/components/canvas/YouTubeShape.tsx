@@ -354,11 +354,6 @@ function ChannelView({ url }: { url: string }) {
     setError(null);
     (async () => {
       try {
-        const { data: res, error: invokeErr } = await supabase.functions.invoke(
-          "youtube-channel",
-          { method: "GET" } as any,
-        );
-        // Edge function uses query params — call via fetch instead
         const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
         const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
         const r = await fetch(
