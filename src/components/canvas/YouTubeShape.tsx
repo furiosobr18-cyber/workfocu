@@ -202,8 +202,10 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
     if (urlValue.trim()) setShowUrlInput(false);
   }, [editor, shape.id, urlValue]);
 
-  // Empty state or editing
-  if (!embedUrl || showUrlInput) {
+  const isChannel = parsed?.kind === "channel" || parsed?.kind === "handle";
+
+  // Empty state or editing (but not for channels — they have their own UI)
+  if ((!embedUrl && !isChannel) || showUrlInput) {
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
