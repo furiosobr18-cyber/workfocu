@@ -229,8 +229,13 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
           onPointerDown={(e) => e.stopPropagation()}
         >
           <span style={{ fontSize: 12, color: "hsl(0,0%,60%)", fontWeight: 500 }}>
-            Cole a URL do YouTube
+            Cole a URL do YouTube (vídeo, playlist ou canal)
           </span>
+          {needsHandleHelp && (
+            <span style={{ fontSize: 10, color: "hsl(30,80%,65%)" }}>
+              Para canais com @handle, use a URL no formato /channel/UC… (abra o canal no YouTube e copie a URL completa).
+            </span>
+          )}
           <input
             value={urlValue}
             onChange={(e) => setUrlValue(e.target.value)}
@@ -239,7 +244,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
               if (e.key === "Enter") handleSubmit();
               if (e.key === "Escape") { setShowUrlInput(false); setUrlValue(shape.props.url || ""); }
             }}
-            placeholder="https://youtube.com/watch?v=..."
+            placeholder="vídeo, playlist ou /channel/UC..."
             autoFocus
             style={{
               width: "100%",
