@@ -298,15 +298,19 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
       borderRadius: 12, overflow: "visible", pointerEvents: "all", position: "relative",
     }}>
       <div
-        style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative" }}
+        style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative", background: "hsl(0,0%,7%)" }}
       >
-        <iframe
-          src={embedUrl!}
-          width="100%" height="100%"
-          style={{ border: "none" }}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+        {isChannel ? (
+          <ChannelView url={shape.props.url} />
+        ) : (
+          <iframe
+            src={embedUrl!}
+            width="100%" height="100%"
+            style={{ border: "none" }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        )}
         <ShapeOverlay shapeId={shape.id} />
         {/* Edit button overlay */}
         <button
@@ -324,5 +328,151 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
       </div>
       <SourceDot shapeId={shape.id} shapeType="youtube" />
     </HTMLContainer>
+  );
+}
+
+interface ChannelData {
+  channelId: string;
+  title: string;
+  handle: string | null;
+  avatar: string | null;
+  banner: string | null;
+  description: string;
+  subscriberText: string | null;
+  videos: { id: string; title: string; thumbnail: string; published: string; author: string }[];
+}
+
+function ChannelView({ url }: { url: string }) {
+  const [data, setData] = useState<ChannelData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const { data: res, error: invokeErr } = await supabase.functions.invoke(
+          "youtube-channel",
+          { method: "GET" } as any,
+        );
+        // Edge function uses query params — call via fetch instead
+        const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const r = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/youtube-channel?url=${encodeURIComponent(url)}`,
+          { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey } },
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const json = (await r.json()) as ChannelData;
+        if (!cancelled) setData(json);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message || "Falha ao carregar canal");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "hsl(0,0%,60%)", fontSize: 13 }}>
+        Carregando canal…
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "hsl(0,80%,65%)", fontSize: 12, padding: 16, textAlign: "center", gap: 8 }}>
+        <span>⚠️ {error || "Não foi possível carregar o canal"}</span>
+        <a href={url} target="_blank" rel="noreferrer" style={{ color: "hsl(0,0%,70%)", fontSize: 11 }}>Abrir no YouTube ↗</a>
+      </div>
+    );
+  }
+
+  if (playingId) {
+    return (
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <iframe
+          src={`https://www.youtube.com/embed/${playingId}?autoplay=1`}
+          width="100%" height="100%"
+          style={{ border: "none" }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+        <button
+          onClick={(e) => { e.stopPropagation(); setPlayingId(null); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute", top: 8, left: 8, zIndex: 10,
+            background: "hsla(0,0%,7%,0.85)", border: "1px solid hsl(0,0%,25%)",
+            borderRadius: 6, padding: "4px 10px", color: "hsl(0,0%,80%)",
+            fontSize: 11, cursor: "pointer", backdropFilter: "blur(4px)",
+          }}
+        >
+          ← Voltar ao canal
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ width: "100%", height: "100%", overflowY: "auto", background: "hsl(0,0%,6%)", color: "hsl(0,0%,90%)", fontFamily: "system-ui, -apple-system, sans-serif" }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {/* Banner */}
+      {data.banner && (
+        <div style={{ width: "100%", aspectRatio: "6.2 / 1", overflow: "hidden", background: "hsl(0,0%,10%)" }}>
+          <img src={data.banner} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: "flex", gap: 16, padding: "16px 20px", alignItems: "center" }}>
+        {data.avatar && (
+          <img src={data.avatar} alt={data.title} style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+        )}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{data.title}</div>
+          <div style={{ fontSize: 12, color: "hsl(0,0%,60%)", marginTop: 4 }}>
+            {data.handle && <span>{data.handle}</span>}
+            {data.subscriberText && <span> · {data.subscriberText}</span>}
+            <span> · {data.videos.length} vídeos recentes</span>
+          </div>
+          {data.description && (
+            <div style={{ fontSize: 12, color: "hsl(0,0%,70%)", marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {data.description}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Videos grid */}
+      <div style={{ padding: "0 20px 20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+        {data.videos.map((v) => (
+          <div
+            key={v.id}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setPlayingId(v.id); }}
+            style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: 6 }}
+          >
+            <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 8, overflow: "hidden", background: "hsl(0,0%,12%)" }}>
+              <img src={v.thumbnail} alt={v.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+            </div>
+            <div style={{ fontSize: 12, lineHeight: 1.3, color: "hsl(0,0%,92%)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {v.title}
+            </div>
+            <div style={{ fontSize: 10, color: "hsl(0,0%,55%)" }}>
+              {new Date(v.published).toLocaleDateString("pt-BR")}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
