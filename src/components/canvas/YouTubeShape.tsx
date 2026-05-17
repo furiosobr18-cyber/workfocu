@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ShapeOverlay } from "./ShapeOverlay";
 import {
   BaseBoxShapeUtil,
@@ -20,11 +20,48 @@ export type YouTubeShape = TLBaseShape<
   }
 >;
 
-function getYouTubeId(url: string): string | null {
-  const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/
+type YouTubeEmbed =
+  | { kind: "video"; id: string }
+  | { kind: "playlist"; id: string }
+  | { kind: "channel"; id: string }
+  | { kind: "handle"; handle: string }
+  | null;
+
+function parseYouTube(url: string): YouTubeEmbed {
+  if (!url) return null;
+  const u = url.trim();
+
+  // Video ID
+  const v = u.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/
   );
-  return match ? match[1] : null;
+  if (v) return { kind: "video", id: v[1] };
+
+  // Playlist
+  const p = u.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (p && /playlist|watch/.test(u)) return { kind: "playlist", id: p[1] };
+
+  // Channel by ID: /channel/UCxxxx -> uploads playlist UU...
+  const c = u.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,})/);
+  if (c) return { kind: "channel", id: c[1] };
+
+  // Handle: /@name or /c/name or /user/name
+  const h = u.match(/youtube\.com\/(?:@|c\/|user\/)([a-zA-Z0-9._-]+)/);
+  if (h) return { kind: "handle", handle: h[1] };
+
+  return null;
+}
+
+function getEmbedUrl(parsed: YouTubeEmbed): string | null {
+  if (!parsed) return null;
+  if (parsed.kind === "video") return `https://www.youtube.com/embed/${parsed.id}`;
+  if (parsed.kind === "playlist") return `https://www.youtube.com/embed/videoseries?list=${parsed.id}`;
+  if (parsed.kind === "channel") {
+    // Uploads playlist for a channel: replace UC -> UU
+    const uploads = "UU" + parsed.id.slice(2);
+    return `https://www.youtube.com/embed/videoseries?list=${uploads}`;
+  }
+  return null; // handle: needs resolution via API, fallback below
 }
 
 // Neutral WorkFocus colors
@@ -155,7 +192,9 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
   const editor = useEditor();
   const [showUrlInput, setShowUrlInput] = useState(!shape.props.url);
   const [urlValue, setUrlValue] = useState(shape.props.url || "");
-  const videoId = getYouTubeId(shape.props.url);
+  const parsed = useMemo(() => parseYouTube(shape.props.url), [shape.props.url]);
+  const embedUrl = useMemo(() => getEmbedUrl(parsed), [parsed]);
+  const needsHandleHelp = parsed?.kind === "handle";
 
   const handleSubmit = useCallback(() => {
     editor.updateShape({ id: shape.id, type: "youtube", props: { url: urlValue.trim() } });
@@ -163,7 +202,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
   }, [editor, shape.id, urlValue]);
 
   // Empty state or editing
-  if (!videoId || showUrlInput) {
+  if (!embedUrl || showUrlInput) {
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
@@ -190,8 +229,13 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
           onPointerDown={(e) => e.stopPropagation()}
         >
           <span style={{ fontSize: 12, color: "hsl(0,0%,60%)", fontWeight: 500 }}>
-            Cole a URL do YouTube
+            Cole a URL do YouTube (vídeo, playlist ou canal)
           </span>
+          {needsHandleHelp && (
+            <span style={{ fontSize: 10, color: "hsl(30,80%,65%)" }}>
+              Para canais com @handle, use a URL no formato /channel/UC… (abra o canal no YouTube e copie a URL completa).
+            </span>
+          )}
           <input
             value={urlValue}
             onChange={(e) => setUrlValue(e.target.value)}
@@ -200,7 +244,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
               if (e.key === "Enter") handleSubmit();
               if (e.key === "Escape") { setShowUrlInput(false); setUrlValue(shape.props.url || ""); }
             }}
-            placeholder="https://youtube.com/watch?v=..."
+            placeholder="vídeo, playlist ou /channel/UC..."
             autoFocus
             style={{
               width: "100%",
@@ -254,7 +298,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
         style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative" }}
       >
         <iframe
-          src={`https://www.youtube.com/embed/${videoId}`}
+          src={embedUrl!}
           width="100%" height="100%"
           style={{ border: "none" }}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
