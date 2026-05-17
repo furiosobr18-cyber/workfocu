@@ -20,11 +20,48 @@ export type YouTubeShape = TLBaseShape<
   }
 >;
 
-function getYouTubeId(url: string): string | null {
-  const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/
+type YouTubeEmbed =
+  | { kind: "video"; id: string }
+  | { kind: "playlist"; id: string }
+  | { kind: "channel"; id: string }
+  | { kind: "handle"; handle: string }
+  | null;
+
+function parseYouTube(url: string): YouTubeEmbed {
+  if (!url) return null;
+  const u = url.trim();
+
+  // Video ID
+  const v = u.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/
   );
-  return match ? match[1] : null;
+  if (v) return { kind: "video", id: v[1] };
+
+  // Playlist
+  const p = u.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (p && /playlist|watch/.test(u)) return { kind: "playlist", id: p[1] };
+
+  // Channel by ID: /channel/UCxxxx -> uploads playlist UU...
+  const c = u.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,})/);
+  if (c) return { kind: "channel", id: c[1] };
+
+  // Handle: /@name or /c/name or /user/name
+  const h = u.match(/youtube\.com\/(?:@|c\/|user\/)([a-zA-Z0-9._-]+)/);
+  if (h) return { kind: "handle", handle: h[1] };
+
+  return null;
+}
+
+function getEmbedUrl(parsed: YouTubeEmbed): string | null {
+  if (!parsed) return null;
+  if (parsed.kind === "video") return `https://www.youtube.com/embed/${parsed.id}`;
+  if (parsed.kind === "playlist") return `https://www.youtube.com/embed/videoseries?list=${parsed.id}`;
+  if (parsed.kind === "channel") {
+    // Uploads playlist for a channel: replace UC -> UU
+    const uploads = "UU" + parsed.id.slice(2);
+    return `https://www.youtube.com/embed/videoseries?list=${uploads}`;
+  }
+  return null; // handle: needs resolution via API, fallback below
 }
 
 // Neutral WorkFocus colors
