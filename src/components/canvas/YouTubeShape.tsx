@@ -192,7 +192,9 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
   const editor = useEditor();
   const [showUrlInput, setShowUrlInput] = useState(!shape.props.url);
   const [urlValue, setUrlValue] = useState(shape.props.url || "");
-  const videoId = getYouTubeId(shape.props.url);
+  const parsed = useMemo(() => parseYouTube(shape.props.url), [shape.props.url]);
+  const embedUrl = useMemo(() => getEmbedUrl(parsed), [parsed]);
+  const needsHandleHelp = parsed?.kind === "handle";
 
   const handleSubmit = useCallback(() => {
     editor.updateShape({ id: shape.id, type: "youtube", props: { url: urlValue.trim() } });
@@ -200,7 +202,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
   }, [editor, shape.id, urlValue]);
 
   // Empty state or editing
-  if (!videoId || showUrlInput) {
+  if (!embedUrl || showUrlInput) {
     return (
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
