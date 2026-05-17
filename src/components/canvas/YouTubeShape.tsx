@@ -293,7 +293,7 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
         style={{ width: "100%", height: "100%", borderRadius: 12, overflow: "hidden", position: "relative" }}
       >
         <iframe
-          src={`https://www.youtube.com/embed/${videoId}`}
+          src={embedUrl!}
           width="100%" height="100%"
           style={{ border: "none" }}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
