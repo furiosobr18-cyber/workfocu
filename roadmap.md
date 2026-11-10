@@ -1,0 +1,1 @@
+- [x] Chat: adicionar provedor (base URL + API key) com modelos automáticos
