@@ -534,7 +534,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          style={{ flex: 1, overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 6 }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
+          onCopy={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{ flex: 1, overflowY: "auto", padding: 8, userSelect: "text", WebkitUserSelect: "text", cursor: "text", display: "flex", flexDirection: "column", gap: 6 }}
         >
           {messages.length === 0 && (
             <div style={{ color: "hsl(0,0%,35%)", fontSize: 12, textAlign: "center", marginTop: 20 }}>
@@ -561,8 +566,14 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                 background: msg.role === "user" ? "hsla(0,0%,30%,0.3)" : "hsl(0,0%,12%)",
                 color: "hsl(0,0%,88%)",
                 border: msg.role === "user" ? "1px solid hsl(0,0%,30%)" : "1px solid hsl(0,0%,20%)",
+                userSelect: "text", WebkitUserSelect: "text", position: "relative",
               }}
             >
+              <button
+                title="Copiar"
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(msg.content); const b = e.currentTarget; b.textContent = "✓"; setTimeout(() => { b.textContent = "⧉"; }, 1200); }}
+                style={{ float: "right", marginLeft: 6, background: "none", border: "none", color: "hsl(0,0%,50%)", cursor: "pointer", fontSize: 11, padding: 0 }}
+              >⧉</button>
               {msg.role === "assistant" ? (
                 <div className="prose prose-sm prose-invert max-w-none" style={{ fontSize: 12 }}>
                   <ReactMarkdown>{msg.content}</ReactMarkdown>

@@ -1,2 +1,2 @@
 - [x] Chat: adicionar provedor (base URL + API key) com modelos automáticos
-- [ ] Chat: selecionar e copiar texto das mensagens
+- [x] Chat: selecionar e copiar texto das mensagens
