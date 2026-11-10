@@ -12,6 +12,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { TargetDot } from "./YouTubeShape";
 import { useConnections } from "./ConnectionContext";
+import { loadProviders, saveProviders, providerNameFromUrl, type AIProvider } from "./aiProviders";
 
 export type ChatShape = TLBaseShape<
   "canvas-chat",
@@ -64,6 +65,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [providers, setProviders] = useState<AIProvider[]>(() => loadProviders());
+  const [addStep, setAddStep] = useState<null | "choose" | "apikey">(null);
+  const [newBaseUrl, setNewBaseUrl] = useState("");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState("");
   const [memory, setMemory] = useState(shape.props.memory || "");
   const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -110,7 +117,39 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
-  const currentModel = AI_MODELS.find((m) => m.id === selectedModel) || AI_MODELS[0];
+  const customSel = selectedModel.startsWith("prov::") ? (() => {
+    const [, pid, ...rest] = selectedModel.split("::");
+    const prov = providers.find((p) => p.id === pid);
+    return prov ? { prov, model: rest.join("::") } : null;
+  })() : null;
+  const currentModel = customSel
+    ? { id: selectedModel, label: customSel.model, emoji: "🔌" }
+    : AI_MODELS.find((m) => m.id === selectedModel) || AI_MODELS[0];
+
+  const connectProvider = async () => {
+    setConnecting(true); setConnectError("");
+    try {
+      const baseUrl = newBaseUrl.trim().replace(/\/+$/, "");
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ action: "list_models", custom: { baseUrl, apiKey: newApiKey.trim() } }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !Array.isArray(data.models) || data.models.length === 0) throw new Error(data.error || "Não foi possível conectar");
+      const prov: AIProvider = { id: crypto.randomUUID(), name: providerNameFromUrl(baseUrl), baseUrl, apiKey: newApiKey.trim(), models: data.models };
+      const next = [...providers, prov];
+      setProviders(next); saveProviders(next);
+      setAddStep(null); setNewBaseUrl(""); setNewApiKey("");
+    } catch (e) {
+      setConnectError(e instanceof Error ? e.message : "Erro");
+    } finally { setConnecting(false); }
+  };
+  const removeProvider = (id: string) => {
+    const next = providers.filter((p) => p.id !== id);
+    setProviders(next); saveProviders(next);
+    if (selectedModel.startsWith(`prov::${id}::`)) setSelectedModel(AI_MODELS[0].id);
+  };
 
   // Build context from connected shapes
   const buildContext = useCallback((): string => {
@@ -181,7 +220,11 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: finalMessages, model: selectedModel }),
+        body: JSON.stringify({
+          messages: finalMessages,
+          model: customSel ? customSel.model : selectedModel,
+          ...(customSel ? { custom: { baseUrl: customSel.prov.baseUrl, apiKey: customSel.prov.apiKey } } : {}),
+        }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -236,7 +279,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, messages, isLoading, selectedModel, buildContext, memory, updateMessages]);
+  }, [input, messages, isLoading, selectedModel, customSel, buildContext, memory, updateMessages]);
 
   const handleTargetClick = useCallback(() => {
     if (linkingFrom) {
@@ -332,7 +375,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
               style={{
                 position: "absolute", top: "100%", right: 4, zIndex: 999,
                 background: "hsl(0,0%,12%)", border: "1px solid hsl(0,0%,25%)", borderRadius: 8,
-                padding: 4, minWidth: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                padding: 4, minWidth: 240, maxHeight: 420, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
               }}
               onPointerDown={(e) => e.stopPropagation()}
             >
@@ -353,6 +396,53 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                   {selectedModel === model.id && <span>✓</span>}
                 </button>
               ))}
+              {providers.map((prov) => (
+                <div key={prov.id} style={{ borderTop: "1px solid hsl(0,0%,22%)", marginTop: 4, paddingTop: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 1, color: "hsl(210,100%,66%)" }}>
+                    <span style={{ flex: 1 }}>{prov.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); removeProvider(prov.id); }} title="Remover" style={{ background: "none", border: "none", color: "hsl(0,0%,50%)", cursor: "pointer", fontSize: 11 }}>✕</button>
+                  </div>
+                  <div style={{ maxHeight: 180, overflowY: "auto" }} onWheel={(e) => e.stopPropagation()}>
+                    {prov.models.map((m) => {
+                      const id = `prov::${prov.id}::${m}`;
+                      return (
+                        <button key={id} onClick={(e) => { e.stopPropagation(); setSelectedModel(id); setShowModelPicker(false); }}
+                          style={{ display: "flex", width: "100%", padding: "5px 10px", border: "none", borderRadius: 6, background: selectedModel === id ? "hsl(0,0%,20%)" : "transparent", color: selectedModel === id ? "hsl(0,0%,90%)" : "hsl(0,0%,60%)", fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+                          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m}</span>
+                          {selectedModel === id && <span>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div style={{ borderTop: "1px solid hsl(0,0%,22%)", marginTop: 4, paddingTop: 4 }}>
+                {addStep === null && (
+                  <button onClick={(e) => { e.stopPropagation(); setAddStep("choose"); }}
+                    style={{ width: "100%", padding: "6px 10px", border: "none", borderRadius: 6, background: "transparent", color: "hsl(210,100%,66%)", fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+                    ＋ Adicionar provedor
+                  </button>
+                )}
+                {addStep === "choose" && (
+                  <div style={{ display: "flex", gap: 4, padding: 4 }}>
+                    <button disabled title="Em breve" style={{ flex: 1, padding: 6, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "transparent", color: "hsl(0,0%,40%)", fontSize: 11 }}>Auth (em breve)</button>
+                    <button onClick={(e) => { e.stopPropagation(); setAddStep("apikey"); }} style={{ flex: 1, padding: 6, borderRadius: 6, border: "1px solid hsl(210,100%,56%)", background: "hsl(210,100%,56%)", color: "white", fontSize: 11, cursor: "pointer" }}>API Key</button>
+                  </div>
+                )}
+                {addStep === "apikey" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 6 }} onKeyDown={(e) => e.stopPropagation()}>
+                    <input value={newBaseUrl} onChange={(e) => setNewBaseUrl(e.target.value)} placeholder="Base URL (ex: https://api.openai.com/v1)"
+                      style={{ padding: 6, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "hsl(0,0%,8%)", color: "hsl(0,0%,90%)", fontSize: 11 }} />
+                    <input value={newApiKey} onChange={(e) => setNewApiKey(e.target.value)} placeholder="API Key" type="password"
+                      style={{ padding: 6, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "hsl(0,0%,8%)", color: "hsl(0,0%,90%)", fontSize: 11 }} />
+                    {connectError && <span style={{ color: "hsl(0,90%,65%)", fontSize: 10 }}>{connectError}</span>}
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={(e) => { e.stopPropagation(); setAddStep(null); setConnectError(""); }} style={{ flex: 1, padding: 6, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "transparent", color: "hsl(0,0%,60%)", fontSize: 11, cursor: "pointer" }}>Cancelar</button>
+                      <button disabled={connecting || !newBaseUrl || !newApiKey} onClick={(e) => { e.stopPropagation(); connectProvider(); }} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", background: "hsl(210,100%,56%)", color: "white", fontSize: 11, cursor: "pointer", opacity: connecting || !newBaseUrl || !newApiKey ? 0.5 : 1 }}>{connecting ? "Conectando..." : "Conectar"}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -444,7 +534,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          style={{ flex: 1, overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 6 }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
+          onCopy={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{ flex: 1, overflowY: "auto", padding: 8, userSelect: "text", WebkitUserSelect: "text", cursor: "text", display: "flex", flexDirection: "column", gap: 6 }}
         >
           {messages.length === 0 && (
             <div style={{ color: "hsl(0,0%,35%)", fontSize: 12, textAlign: "center", marginTop: 20 }}>
@@ -471,8 +566,14 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
                 background: msg.role === "user" ? "hsla(0,0%,30%,0.3)" : "hsl(0,0%,12%)",
                 color: "hsl(0,0%,88%)",
                 border: msg.role === "user" ? "1px solid hsl(0,0%,30%)" : "1px solid hsl(0,0%,20%)",
+                userSelect: "text", WebkitUserSelect: "text", position: "relative",
               }}
             >
+              <button
+                title="Copiar"
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(msg.content); const b = e.currentTarget; b.textContent = "✓"; setTimeout(() => { b.textContent = "⧉"; }, 1200); }}
+                style={{ float: "right", marginLeft: 6, background: "none", border: "none", color: "hsl(0,0%,50%)", cursor: "pointer", fontSize: 11, padding: 0 }}
+              >⧉</button>
               {msg.role === "assistant" ? (
                 <div className="prose prose-sm prose-invert max-w-none" style={{ fontSize: 12 }}>
                   <ReactMarkdown>{msg.content}</ReactMarkdown>

@@ -236,7 +236,40 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, model } = await req.json();
+    const { messages, model, custom, action } = await req.json();
+
+    if (custom && typeof custom.baseUrl === "string" && typeof custom.apiKey === "string") {
+      const base = custom.baseUrl.replace(/\/+$/, "");
+      if (!/^https:\/\//.test(base)) {
+        return new Response(JSON.stringify({ error: "Base URL deve começar com https://" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const authHeaders = { Authorization: `Bearer ${custom.apiKey}`, "Content-Type": "application/json" };
+      if (action === "list_models") {
+        const r = await fetch(`${base}/models`, { headers: authHeaders });
+        const txt = await r.text();
+        if (!r.ok) return new Response(JSON.stringify({ error: `Falha ao conectar (${r.status})` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        let ids: string[] = [];
+        try {
+          const j = JSON.parse(txt);
+          const arr = Array.isArray(j) ? j : j.data || j.models || [];
+          ids = arr.map((m: any) => (typeof m === "string" ? m : m.id || m.name)).filter(Boolean).map((x: string) => x.replace(/^models\//, ""));
+        } catch { /* ignore */ }
+        ids.sort();
+        return new Response(JSON.stringify({ models: ids }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const sys = { role: "system", content: "Você é um assistente inteligente integrado a um canvas criativo. Responda em português de forma objetiva." };
+      const { cleanedMessages: cm } = extractConnectedSources(Array.isArray(messages) ? messages : []);
+      const r = await fetch(`${base}/chat/completions`, {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ model: String(model), messages: [sys, ...cm], stream: true }),
+      });
+      if (!r.ok || !r.body) {
+        const t = await r.text();
+        console.error("custom provider error", r.status, t.slice(0, 500));
+        return new Response(JSON.stringify({ error: `Erro do provedor (${r.status})` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+    }
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
