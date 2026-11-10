@@ -422,6 +422,9 @@ Você tem fontes conectadas com metadados. Use as informações disponíveis par
           model: DEFAULT_MODEL,
           messages: payloadMessages,
         });
+      } else if (LOVABLE_API_KEY) {
+        console.error("Groq API error, falling back:", response.status, bodyText);
+        response = await callGemini({ apiKey: LOVABLE_API_KEY, messages: payloadMessages });
       } else {
         console.error("Groq API error:", response.status, bodyText);
         return new Response(
@@ -429,6 +432,11 @@ Você tem fontes conectadas com metadados. Use as informações disponíveis par
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+
+    if (!response.ok && response.status !== 429 && LOVABLE_API_KEY) {
+      console.error("Groq failed, falling back:", response.status);
+      response = await callGemini({ apiKey: LOVABLE_API_KEY, messages: payloadMessages });
     }
 
     if (!response.ok) {
