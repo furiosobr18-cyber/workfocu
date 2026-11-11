@@ -82,7 +82,11 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     try { return JSON.parse(localStorage.getItem(`wf-chat-sessions-${shape.id}`) || "[]"); } catch { return []; }
   });
   const [showSessions, setShowSessions] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, _setActive] = useState<string | null>(() => localStorage.getItem(`wf-chat-active-${shape.id}`));
+  const setActiveSessionId = (id: string | null) => {
+    _setActive(id);
+    if (id) localStorage.setItem(`wf-chat-active-${shape.id}`, id); else localStorage.removeItem(`wf-chat-active-${shape.id}`);
+  };
   const writeSessions = (next: ChatSession[]) => { setSessions(next); localStorage.setItem(sessionsKey, JSON.stringify(next)); };
   const cloudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
