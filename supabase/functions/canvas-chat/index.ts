@@ -419,11 +419,11 @@ Você tem fontes conectadas com metadados. Use as informações disponíveis par
       }
     }
 
-    let response = await callGroq({
-      apiKey: GROQ_API_KEY,
-      model: selectedModel,
-      messages: payloadMessages,
-    });
+    const skipGroq = Date.now() < groqBrokenUntil && !!LOVABLE_API_KEY;
+    let response = skipGroq
+      ? await callGemini({ apiKey: LOVABLE_API_KEY!, messages: payloadMessages })
+      : await callGroq({ apiKey: GROQ_API_KEY, model: selectedModel, messages: payloadMessages });
+    if (!skipGroq && !response.ok && response.status !== 429) groqBrokenUntil = Date.now() + 10 * 60 * 1000;
 
     if (!response.ok && (response.status === 400 || response.status === 404)) {
       const bodyText = await response.text();
