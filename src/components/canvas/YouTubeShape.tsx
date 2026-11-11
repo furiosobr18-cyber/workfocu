@@ -88,8 +88,8 @@ export function SourceDot({
 }) {
   const posStyle =
     side === "right"
-      ? { right: -14, left: "auto" as const }
-      : { left: -14, right: "auto" as const };
+      ? { right: -22, left: "auto" as const }
+      : { left: -22, right: "auto" as const };
 
   return (
     <div
