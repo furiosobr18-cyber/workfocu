@@ -12,6 +12,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { TargetDot } from "./YouTubeShape";
 import { useConnections } from "./ConnectionContext";
+import { supabase } from "@/integrations/supabase/client";
 import { loadProviders, saveProviders, providerNameFromUrl, type AIProvider } from "./aiProviders";
 
 export type ChatShape = TLBaseShape<
@@ -81,8 +82,56 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     try { return JSON.parse(localStorage.getItem(`wf-chat-sessions-${shape.id}`) || "[]"); } catch { return []; }
   });
   const [showSessions, setShowSessions] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, _setActive] = useState<string | null>(() => localStorage.getItem(`wf-chat-active-${shape.id}`));
+  const setActiveSessionId = (id: string | null) => {
+    _setActive(id);
+    if (id) localStorage.setItem(`wf-chat-active-${shape.id}`, id); else localStorage.removeItem(`wf-chat-active-${shape.id}`);
+  };
   const writeSessions = (next: ChatSession[]) => { setSessions(next); localStorage.setItem(sessionsKey, JSON.stringify(next)); };
+  const cloudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load cloud sessions in background (local shows instantly; newer wins)
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).from("chat_sessions").select("id,title,messages,updated_at").eq("shape_id", shape.id).order("updated_at", { ascending: false });
+      if (!Array.isArray(data)) return;
+      setSessions((local) => {
+        const map = new Map(local.map((x) => [x.id, x]));
+        for (const r of data) {
+          const t = new Date(r.updated_at).getTime();
+          const l = map.get(r.id);
+          if (!l || l.updatedAt < t) map.set(r.id, { id: r.id, title: r.title, messages: r.messages || [], updatedAt: t });
+        }
+        const next = [...map.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+        localStorage.setItem(sessionsKey, JSON.stringify(next));
+        return next;
+      });
+    })().catch(() => {});
+  }, [shape.id, sessionsKey]);
+
+  // Auto-save current conversation instantly (local) + cloud (debounced)
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const clean = (t: string) => t.replace(/\[CONNECTED_SOURCES_JSON\][\s\S]*?\[\/CONNECTED_SOURCES_JSON\]/g, "").trim();
+    const title = clean(messages.find((m) => m.role === "user")?.content || "Chat").slice(0, 40) || "Chat";
+    let id = activeSessionId;
+    if (!id) { id = crypto.randomUUID(); setActiveSessionId(id); }
+    const sid = id;
+    const now = Date.now();
+    setSessions((prev) => {
+      const exists = prev.some((x) => x.id === sid);
+      const next = exists
+        ? prev.map((x) => x.id === sid ? { ...x, messages, updatedAt: now } : x)
+        : [{ id: sid, title, messages, updatedAt: now }, ...prev];
+      localStorage.setItem(sessionsKey, JSON.stringify(next));
+      return next;
+    });
+    if (cloudTimer.current) clearTimeout(cloudTimer.current);
+    cloudTimer.current = setTimeout(() => {
+      (supabase as any).from("chat_sessions").upsert({ id: sid, shape_id: shape.id, title, messages, updated_at: new Date(now).toISOString() }).then(() => {}, () => {});
+    }, 800);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persist messages to shape props (debounced)
@@ -301,16 +350,6 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
       ]);
     } finally {
       setIsLoading(false);
-      setMessages((cur) => {
-        if (activeSessionId) {
-          try {
-            const list = JSON.parse(localStorage.getItem(sessionsKey) || "[]");
-            const next = list.map((x: any) => x.id === activeSessionId ? { ...x, messages: cur, updatedAt: Date.now() } : x);
-            localStorage.setItem(sessionsKey, JSON.stringify(next)); setSessions(next);
-          } catch { /* ignore */ }
-        }
-        return cur;
-      });
     }
   }, [input, messages, isLoading, selectedModel, customSel, buildContext, memory, updateMessages, activeSessionId, sessionsKey]);
 
@@ -492,34 +531,18 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             style={{ padding: 8, background: "hsl(0,0%,9%)", borderBottom: "1px solid hsl(0,0%,20%)", maxHeight: 220, overflowY: "auto" }}>
             <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
               <button
-                disabled={messages.length === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const first = messages.find((m) => m.role === "user")?.content || "Chat";
-                  const title = first.replace(/\[CONNECTED_SOURCES_JSON\][\s\S]*?\[\/CONNECTED_SOURCES_JSON\]/g, "").trim().slice(0, 40) || "Chat";
-                  if (activeSessionId && sessions.some((x) => x.id === activeSessionId)) {
-                    writeSessions(sessions.map((x) => x.id === activeSessionId ? { ...x, messages, updatedAt: Date.now() } : x));
-                  } else {
-                    const id = crypto.randomUUID();
-                    setActiveSessionId(id);
-                    writeSessions([{ id, title, messages, updatedAt: Date.now() }, ...sessions]);
-                  }
-                }}
-                style={{ flex: 1, padding: 5, borderRadius: 6, border: "none", background: "hsl(210,100%,56%)", color: "white", fontSize: 11, cursor: "pointer", opacity: messages.length ? 1 : 0.5 }}
-              >💾 Salvar chat atual</button>
-              <button
                 onClick={(e) => { e.stopPropagation(); setActiveSessionId(null); updateMessages([]); }}
                 style={{ flex: 1, padding: 5, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "transparent", color: "hsl(0,0%,75%)", fontSize: 11, cursor: "pointer" }}
               >＋ Novo chat</button>
             </div>
-            {sessions.length === 0 && <div style={{ fontSize: 11, color: "hsl(0,0%,45%)" }}>Nenhum chat salvo ainda.</div>}
+            {sessions.length === 0 && <div style={{ fontSize: 11, color: "hsl(0,0%,45%)" }}>Seus chats aparecem aqui automaticamente.</div>}
             {sessions.map((ss) => (
               <div key={ss.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", borderRadius: 6, background: ss.id === activeSessionId ? "hsl(0,0%,18%)" : "transparent" }}>
                 <button
                   onClick={(e) => { e.stopPropagation(); setActiveSessionId(ss.id); stickToBottomRef.current = true; updateMessages(ss.messages); setShowSessions(false); }}
                   style={{ flex: 1, textAlign: "left", background: "none", border: "none", color: "hsl(0,0%,80%)", fontSize: 11, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 >💬 {ss.title} <span style={{ color: "hsl(0,0%,45%)" }}>· {new Date(ss.updatedAt).toLocaleDateString("pt-BR")}</span></button>
-                <button onClick={(e) => { e.stopPropagation(); writeSessions(sessions.filter((x) => x.id !== ss.id)); if (activeSessionId === ss.id) setActiveSessionId(null); }}
+                <button onClick={(e) => { e.stopPropagation(); writeSessions(sessions.filter((x) => x.id !== ss.id)); (supabase as any).from("chat_sessions").delete().eq("id", ss.id).then(() => {}, () => {}); if (activeSessionId === ss.id) { setActiveSessionId(null); updateMessages([]); } }}
                   title="Apagar" style={{ background: "none", border: "none", color: "hsl(0,0%,50%)", cursor: "pointer", fontSize: 11 }}>✕</button>
               </div>
             ))}
