@@ -6,7 +6,8 @@ type ChatMessage = {
 };
 
 type ConnectedSource = {
-  type: "youtube" | "image" | "file";
+  type: "youtube" | "image" | "file" | "text";
+  text?: string;
   url?: string;
   name?: string;
   src?: string;
@@ -52,7 +53,7 @@ function extractConnectedSources(messages: ChatMessage[]): {
         for (const item of parsed) {
           if (!item || typeof item !== "object") continue;
           const type = String(item.type || "");
-          if (type === "youtube" || type === "image" || type === "file") {
+          if (type === "youtube" || type === "image" || type === "file" || type === "text") {
             sources.push(item as ConnectedSource);
           }
         }
@@ -83,10 +84,19 @@ function normalizeYouTubeUrl(url: string): string {
   return match ? `https://www.youtube.com/watch?v=${match[1]}` : url;
 }
 
+const ytCache = new Map<string, { title: string; author: string }>();
+let groqBrokenUntil = 0;
 async function fetchYouTubeMetadata(url: string): Promise<{ title: string; author: string }> {
+  const cached = ytCache.get(url);
+  if (cached) return cached;
+  const r = await fetchYouTubeMetadataRaw(url);
+  if (r.title) ytCache.set(url, r);
+  return r;
+}
+async function fetchYouTubeMetadataRaw(url: string): Promise<{ title: string; author: string }> {
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-    const res = await fetch(oembedUrl);
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(2500) });
     if (!res.ok) return { title: "", author: "" };
     const data = await res.json();
     return {
@@ -102,6 +112,7 @@ async function fetchYouTubeMetadata(url: string): Promise<{ title: string; autho
 async function buildSourceContextForGemini(
   sources: ConnectedSource[]
 ): Promise<Array<{ type: string; text?: string; image_url?: { url: string } }>> {
+  await Promise.all(sources.filter((x) => x.type === "youtube" && x.url).map((x) => fetchYouTubeMetadata(normalizeYouTubeUrl(x.url!))));
   const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
 
   for (const source of sources) {
@@ -112,6 +123,10 @@ async function buildSourceContextForGemini(
         type: "text",
         text: `[VÍDEO YOUTUBE CONECTADO]\nURL: ${normalizedUrl}\nTítulo: ${meta.title || "N/A"}\nCanal: ${meta.author || "N/A"}\nINSTRUÇÃO: Acesse e analise este vídeo do YouTube em detalhes. Transcreva o conteúdo falado, identifique temas, pontos-chave e qualquer informação visual relevante. Use o conteúdo real do vídeo para responder perguntas do usuário.\n[/VÍDEO YOUTUBE]`,
       });
+    }
+
+    if (source.type === "text" && source.text) {
+      parts.push({ type: "text", text: `[ELEMENTO CONECTADO: ${source.name || "texto"}]\n${source.text.slice(0, 8000)}\n[/ELEMENTO]` });
     }
 
     if (source.type === "image") {
@@ -157,6 +172,7 @@ async function buildSourceContextForGemini(
 async function buildTextContextForGroq(
   sources: ConnectedSource[]
 ): Promise<string> {
+  await Promise.all(sources.filter((x) => x.type === "youtube" && x.url).map((x) => fetchYouTubeMetadata(normalizeYouTubeUrl(x.url!))));
   if (sources.length === 0) return "";
 
   const parts: string[] = [];
@@ -168,6 +184,9 @@ async function buildTextContextForGroq(
       parts.push(
         `[YOUTUBE] URL: ${normalizedUrl} | Título: ${meta.title || "N/A"} | Canal: ${meta.author || "N/A"}`
       );
+    }
+    if (source.type === "text" && source.text) {
+      parts.push(`[ELEMENTO: ${source.name || "texto"}]\n${source.text.slice(0, 6000)}\n[/ELEMENTO]`);
     }
     if (source.type === "image") {
       parts.push(`[IMAGEM] ${source.name || "imagem"} conectada.`);
