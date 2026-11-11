@@ -74,6 +74,15 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const [memory, setMemory] = useState(shape.props.memory || "");
   const [showMemory, setShowMemory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const sessionsKey = `wf-chat-sessions-${shape.id}`;
+  type ChatSession = { id: string; title: string; messages: ChatMessage[]; updatedAt: number };
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`wf-chat-sessions-${shape.id}`) || "[]"); } catch { return []; }
+  });
+  const [showSessions, setShowSessions] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const writeSessions = (next: ChatSession[]) => { setSessions(next); localStorage.setItem(sessionsKey, JSON.stringify(next)); };
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persist messages to shape props (debounced)
@@ -114,7 +123,8 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
   const connections = getConnectionsForChat(shape.id);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    const el = scrollRef.current;
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const customSel = selectedModel.startsWith("prov::") ? (() => {
@@ -159,7 +169,19 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     const sources = connections
       .map((conn) => {
         const data = shapeDataMap[conn.sourceId];
-        if (!data) return null;
+        if (!data) {
+          const sh: any = editor.getShape(conn.sourceId as any);
+          if (!sh) return null;
+          const p = sh.props || {};
+          let text = typeof p.text === "string" ? p.text : "";
+          if (!text && p.richText) {
+            const walk = (n: any): string => (n?.text || "") + (Array.isArray(n?.content) ? n.content.map(walk).join(n.type === "doc" ? "\n" : "") : "");
+            text = walk(p.richText);
+          }
+          if (p.url) return { type: "text", name: sh.type, text: `Link: ${p.url}${text ? "\n" + text : ""}` };
+          if (text) return { type: "text", name: sh.type, text: text.slice(0, 8000) };
+          return null;
+        }
 
         if (data.type === "youtube" && data.url) {
           return { type: "youtube", url: getYouTubeUrl(data.url) };
@@ -188,7 +210,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
 
     if (sources.length === 0) return "";
     return `\n\n[CONNECTED_SOURCES_JSON]\n${JSON.stringify(sources)}\n[/CONNECTED_SOURCES_JSON]`;
-  }, [connections]);
+  }, [connections, editor]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -197,6 +219,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
     const userContent = input.trim();
     const userMsg: ChatMessage = { role: "user", content: userContent };
     const newMessages = [...messages, userMsg];
+    stickToBottomRef.current = true;
     updateMessages(newMessages);
     setInput("");
     setIsLoading(true);
@@ -278,8 +301,18 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
       ]);
     } finally {
       setIsLoading(false);
+      setMessages((cur) => {
+        if (activeSessionId) {
+          try {
+            const list = JSON.parse(localStorage.getItem(sessionsKey) || "[]");
+            const next = list.map((x: any) => x.id === activeSessionId ? { ...x, messages: cur, updatedAt: Date.now() } : x);
+            localStorage.setItem(sessionsKey, JSON.stringify(next)); setSessions(next);
+          } catch { /* ignore */ }
+        }
+        return cur;
+      });
     }
-  }, [input, messages, isLoading, selectedModel, customSel, buildContext, memory, updateMessages]);
+  }, [input, messages, isLoading, selectedModel, customSel, buildContext, memory, updateMessages, activeSessionId, sessionsKey]);
 
   const handleTargetClick = useCallback(() => {
     if (linkingFrom) {
@@ -344,6 +377,12 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
             >
               🧠 {memory.trim() ? "Memória ✓" : "Memória"}
             </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowSessions(!showSessions); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              title="Chats salvos"
+              style={{ background: "hsl(0,0%,15%)", border: "1px solid hsl(0,0%,25%)", borderRadius: 6, padding: "2px 6px", fontSize: 11, cursor: "pointer", color: "hsl(0,0%,70%)" }}
+            >🗂 Chats{sessions.length ? ` (${sessions.length})` : ""}</button>
             {connections.length > 0 && (
               <span
                 style={{
@@ -448,6 +487,45 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         </div>
 
         {/* Memory panel */}
+        {showSessions && (
+          <div onPointerDown={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}
+            style={{ padding: 8, background: "hsl(0,0%,9%)", borderBottom: "1px solid hsl(0,0%,20%)", maxHeight: 220, overflowY: "auto" }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+              <button
+                disabled={messages.length === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const first = messages.find((m) => m.role === "user")?.content || "Chat";
+                  const title = first.replace(/\[CONNECTED_SOURCES_JSON\][\s\S]*?\[\/CONNECTED_SOURCES_JSON\]/g, "").trim().slice(0, 40) || "Chat";
+                  if (activeSessionId && sessions.some((x) => x.id === activeSessionId)) {
+                    writeSessions(sessions.map((x) => x.id === activeSessionId ? { ...x, messages, updatedAt: Date.now() } : x));
+                  } else {
+                    const id = crypto.randomUUID();
+                    setActiveSessionId(id);
+                    writeSessions([{ id, title, messages, updatedAt: Date.now() }, ...sessions]);
+                  }
+                }}
+                style={{ flex: 1, padding: 5, borderRadius: 6, border: "none", background: "hsl(210,100%,56%)", color: "white", fontSize: 11, cursor: "pointer", opacity: messages.length ? 1 : 0.5 }}
+              >💾 Salvar chat atual</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveSessionId(null); updateMessages([]); }}
+                style={{ flex: 1, padding: 5, borderRadius: 6, border: "1px solid hsl(0,0%,25%)", background: "transparent", color: "hsl(0,0%,75%)", fontSize: 11, cursor: "pointer" }}
+              >＋ Novo chat</button>
+            </div>
+            {sessions.length === 0 && <div style={{ fontSize: 11, color: "hsl(0,0%,45%)" }}>Nenhum chat salvo ainda.</div>}
+            {sessions.map((ss) => (
+              <div key={ss.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", borderRadius: 6, background: ss.id === activeSessionId ? "hsl(0,0%,18%)" : "transparent" }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveSessionId(ss.id); stickToBottomRef.current = true; updateMessages(ss.messages); setShowSessions(false); }}
+                  style={{ flex: 1, textAlign: "left", background: "none", border: "none", color: "hsl(0,0%,80%)", fontSize: 11, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >💬 {ss.title} <span style={{ color: "hsl(0,0%,45%)" }}>· {new Date(ss.updatedAt).toLocaleDateString("pt-BR")}</span></button>
+                <button onClick={(e) => { e.stopPropagation(); writeSessions(sessions.filter((x) => x.id !== ss.id)); if (activeSessionId === ss.id) setActiveSessionId(null); }}
+                  title="Apagar" style={{ background: "none", border: "none", color: "hsl(0,0%,50%)", cursor: "pointer", fontSize: 11 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {showMemory && (
           <div
             style={{
@@ -535,6 +613,7 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         <div
           ref={scrollRef}
           className="wf-selectable"
+          onScroll={(e) => { const el = e.currentTarget; stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}

@@ -1,2 +1,3 @@
 - [x] Chat: adicionar provedor (base URL + API key) com modelos automáticos
 - [x] Chat: selecionar e copiar texto das mensagens
+- [x] Chat: conexões mais rápidas/precisas, salvar chats, rolagem livre durante resposta
