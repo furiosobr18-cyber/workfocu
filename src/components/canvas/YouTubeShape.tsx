@@ -129,7 +129,7 @@ export function TargetDot({ shapeId }: { shapeId: string }) {
       data-connection-target={shapeId}
       style={{
         position: "absolute",
-        left: -14,
+        left: -22,
         top: "50%",
         transform: "translateY(-50%)",
         width: 20,
