@@ -135,3 +135,9 @@
     @apply bg-accent text-foreground;
   }
 }
+
+.wf-selectable, .wf-selectable * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  pointer-events: auto !important;
+}

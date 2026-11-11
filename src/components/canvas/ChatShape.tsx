@@ -534,6 +534,9 @@ function ChatComponent({ shape }: { shape: ChatShape }) {
         {/* Messages */}
         <div
           ref={scrollRef}
+          className="wf-selectable"
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
