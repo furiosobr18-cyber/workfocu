@@ -4,6 +4,7 @@ import { Tldraw, Editor } from "tldraw";
 import "tldraw/tldraw.css";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useCanvasPersistence } from "@/hooks/useCanvasPersistence";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen, Undo2, Redo2, Save, Cloud, CloudOff } from "lucide-react";
