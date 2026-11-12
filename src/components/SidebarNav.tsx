@@ -29,7 +29,7 @@ const SidebarNav = memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   const handleLogout = useCallback(async () => {
     const { error } = await signOut();
@@ -88,7 +88,7 @@ const SidebarNav = memo(() => {
           {displayEmail}
         </div>
         <button onClick={toggleTheme} className="sidebar-link w-full">
-          {theme === 'dark' ? (
+          {resolvedTheme === 'dark' ? (
             <>
               <Sun className="w-5 h-5" />
               <span>Modo claro</span>

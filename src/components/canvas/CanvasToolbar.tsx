@@ -230,7 +230,7 @@ interface CanvasToolbarProps {
 }
 
 const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<string>("select");
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -338,7 +338,7 @@ const CanvasToolbar = ({ editor }: CanvasToolbarProps) => {
         title="Alternar tema"
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
       >
-        {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        {resolvedTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
       {/* Separator */}

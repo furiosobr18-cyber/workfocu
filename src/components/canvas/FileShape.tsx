@@ -55,8 +55,8 @@ export class FileShapeUtil extends BaseBoxShapeUtil<FileShape> {
         <HTMLContainer style={{
           width: shape.props.w, height: shape.props.h,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#1a1a2e", borderRadius: 12, border: "2px dashed #444",
-          color: "#888", fontSize: 13, gap: 8, pointerEvents: "all", position: "relative",
+          background: "hsl(var(--card))", borderRadius: 12, border: "2px dashed hsl(var(--border))",
+          color: "hsl(var(--muted-foreground))", fontSize: 13, gap: 8, pointerEvents: "all", position: "relative",
         }}>
           <SourceDot shapeId={shape.id} shapeType="canvas-file" />
           <span style={{ fontSize: 24 }}>📎</span>
@@ -69,8 +69,8 @@ export class FileShapeUtil extends BaseBoxShapeUtil<FileShape> {
       <HTMLContainer style={{
         width: shape.props.w, height: shape.props.h,
         display: "flex", alignItems: "center", gap: 12, padding: "0 16px",
-        background: "#1e1e30", borderRadius: 12, border: "1px solid #333",
-        color: "#e0e0e0", fontSize: 13, pointerEvents: "all", position: "relative",
+        background: "hsl(var(--card))", borderRadius: 12, border: "1px solid hsl(var(--border))",
+        color: "hsl(var(--foreground))", fontSize: 13, pointerEvents: "all", position: "relative",
       }}>
         <SourceDot shapeId={shape.id} shapeType="canvas-file" />
         <span style={{ fontSize: 28 }}>{getFileIcon(shape.props.name)}</span>

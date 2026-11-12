@@ -4,6 +4,7 @@ import { Tldraw, Editor } from "tldraw";
 import "tldraw/tldraw.css";
 import SidebarNav from "@/components/SidebarNav";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useCanvasPersistence } from "@/hooks/useCanvasPersistence";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen, Undo2, Redo2, Save, Cloud, CloudOff } from "lucide-react";
@@ -114,6 +115,13 @@ function CanvasInner() {
   const handleMount = useCallback((editor: Editor) => {
     setEditor(editor);
   }, []);
+
+  // Keep the canvas background in sync with the app theme (system, dark or light).
+  const { resolvedTheme } = useTheme();
+  useEffect(() => {
+    if (!editor) return;
+    editor.user.updateUserPreferences({ colorScheme: resolvedTheme });
+  }, [editor, resolvedTheme]);
 
   // Single unified store listener for page sync + shape data (replaces 3 separate listeners)
   useEffect(() => {
