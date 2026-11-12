@@ -120,7 +120,7 @@ function CanvasInner() {
   const { resolvedTheme } = useTheme();
   useEffect(() => {
     if (!editor) return;
-    editor.updateInstanceState({ isDarkMode: resolvedTheme === "dark" });
+    editor.user.updateUserPreferences({ colorScheme: resolvedTheme });
   }, [editor, resolvedTheme]);
 
   // Single unified store listener for page sync + shape data (replaces 3 separate listeners)
