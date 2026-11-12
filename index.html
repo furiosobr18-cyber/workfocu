@@ -19,6 +19,20 @@
   
   
   
+  <script>
+    // Apply the theme before the first paint so the page never flashes the wrong color.
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = stored === 'dark' || ((stored === null || stored === 'system') && prefersDark);
+        var root = document.documentElement;
+        root.classList.toggle('dark', dark);
+        root.classList.toggle('light', !dark);
+        root.style.colorScheme = dark ? 'dark' : 'light';
+      } catch (e) {}
+    })();
+  </script>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/gpt-engineer-file-uploads/X1dy3pEOhvQpQ54yQpiYnvAV6n02/uploads/1769018304196-logo work.png">
   <meta property="og:title" content="WorkFocus">
   <meta name="twitter:title" content="WorkFocus">
