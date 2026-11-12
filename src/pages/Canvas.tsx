@@ -116,6 +116,13 @@ function CanvasInner() {
     setEditor(editor);
   }, []);
 
+  // Keep the canvas background in sync with the app theme (system, dark or light).
+  const { resolvedTheme } = useTheme();
+  useEffect(() => {
+    if (!editor) return;
+    editor.updateInstanceState({ isDarkMode: resolvedTheme === "dark" });
+  }, [editor, resolvedTheme]);
+
   // Single unified store listener for page sync + shape data (replaces 3 separate listeners)
   useEffect(() => {
     if (!editor) return;
