@@ -29,7 +29,7 @@ const SidebarNav = memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   const handleLogout = useCallback(async () => {
     const { error } = await signOut();
