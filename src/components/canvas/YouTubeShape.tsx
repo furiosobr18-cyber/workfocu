@@ -301,6 +301,8 @@ function YouTubeComponent({ shape }: { shape: YouTubeShape }) {
       >
         {isChannel ? (
           <ChannelView url={shape.props.url} />
+        ) : parsed?.kind === "video" ? (
+          <VideoCard url={shape.props.url} videoId={(parsed as any).id} embedUrl={embedUrl!} />
         ) : (
           <iframe
             src={embedUrl!}
@@ -466,6 +468,47 @@ function ChannelView({ url }: { url: string }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+
+function VideoCard({ url, videoId, embedUrl }: { url: string; videoId: string; embedUrl: string }) {
+  const [meta, setMeta] = useState<{ title: string; author: string } | null>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    let off = false;
+    fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!off) setMeta({ title: d.title || "Vídeo do YouTube", author: d.author_name || "" }); })
+      .catch(() => { if (!off) setMeta({ title: "Vídeo do YouTube", author: "" }); });
+    return () => { off = true; };
+  }, [url]);
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "hsl(0,0%,96%)", color: "hsl(0,0%,15%)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", fontSize: 12, fontWeight: 600, minHeight: 34 }}>
+        <span style={{ background: "hsl(0,100%,50%)", color: "white", borderRadius: 4, fontSize: 8, padding: "2px 4px", lineHeight: 1 }}>▶</span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{meta?.title || "Carregando..."}</span>
+      </div>
+      <div style={{ flex: 1, position: "relative", background: "black", margin: "0 8px", borderRadius: 8, overflow: "hidden" }}>
+        {playing ? (
+          <iframe src={`${embedUrl}${embedUrl.includes("?") ? "&" : "?"}autoplay=1`} width="100%" height="100%" style={{ border: "none" }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+        ) : (
+          <>
+            <img src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt={meta?.title || "thumbnail"} draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setPlaying(true); }}
+              style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 6, width: 44, height: 44, borderRadius: "50%", border: "none", background: "hsla(0,0%,100%,0.9)", color: "hsl(0,0%,10%)", fontSize: 16, cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+            >▶</button>
+          </>
+        )}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", fontSize: 10, color: "hsl(0,0%,45%)" }}>
+        <span>{meta?.author}</span><span>YouTube</span>
       </div>
     </div>
   );
